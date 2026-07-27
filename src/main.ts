@@ -1,6 +1,7 @@
 import './styles/base.css'
 import './styles/board.css'
 import './styles/screens.css'
+import './styles/helix.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
 import { MODES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
@@ -84,7 +85,7 @@ function playMode(mode: ModeDef): void {
   /** Push the engine's genome state at the HUD. */
   function paintGenome(): void {
     const { organism, bonded, genome } = engine.genome
-    screen.setEvolution(organism.tier, organism.name, bonded, genome)
+    screen.setEvolution(organism.tier, organism.name, bonded, genome, organism.hue)
     screen.setAnomaly(organism.anomaly)
   }
   /** The only place engine events become pixels. */
@@ -98,6 +99,9 @@ function playMode(mode: ModeDef): void {
         break
       case 'phase':
         screen.board.setLocked(event.phase === 'playback')
+        // The strand hangs still while the sequence plays, and spins up when
+        // it is the player's turn — the locked state, made visible.
+        screen.helix.setLive(event.phase === 'input')
         if (event.phase === 'playback') screen.setStatus('watch', 'watch')
         else if (event.phase === 'input') screen.setStatus('your turn', 'go')
         else if (event.phase === 'paused')
@@ -115,6 +119,7 @@ function playMode(mode: ModeDef): void {
         screen.setProgress(event.index + 1, engine.sequence.length)
         // One correct input bonds one base pair of the current genome.
         paintGenome()
+        screen.helix.bond(event.symbol)
         break
       case 'roundClear':
         screen.setStatus(`clear · +${event.points.toLocaleString()}`, 'good')

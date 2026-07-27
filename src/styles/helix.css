@@ -1,0 +1,240 @@
+/* The DNA strand.
+ *
+ * Real 3D: each rung is a bar with a node at either end, spinning about the
+ * horizontal axis. Neighbouring rungs are offset in phase, so the two node
+ * trails trace out a double helix and swap depth as they turn. Perspective
+ * scales the near node up and the far one down, which is what sells it.
+ *
+ * Everything animated here is `transform` or `opacity` — compositor work only,
+ * so it cannot steal frames from the playback timers.
+ */
+
+.helix {
+  --helix-hue: 285;
+  /* How many rungs fit. Read once per rebuild by ui/helix.ts. */
+  --helix-rungs: 40;
+  --helix-spin: 4s;
+  /* Phase offset between neighbours — this is what makes it a helix. */
+  --helix-stagger: -0.1s;
+  --helix-height: 62px;
+
+  width: 100%;
+  max-width: 620px;
+  height: calc(var(--helix-height) + 18px);
+  perspective: 620px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fades the ends so a long genome reads as continuing past the frame. */
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 7%,
+    #000 93%,
+    transparent
+  );
+  opacity: 0.55;
+  transition: opacity 260ms ease;
+}
+
+/* The player's turn: the strand spins up and brightens. While the sequence is
+   playing back it hangs still and dim — the locked state, made visible. */
+.helix.is-live {
+  opacity: 1;
+}
+
+.helix__strand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(2px, 0.7vw, 7px);
+  width: 100%;
+  transform-style: preserve-3d;
+}
+
+.helix__rung {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 2px;
+  max-width: 16px;
+  height: var(--helix-height);
+  transform-style: preserve-3d;
+  animation: helix-spin var(--helix-spin) linear infinite;
+  animation-delay: calc(var(--i) * var(--helix-stagger));
+  animation-play-state: paused;
+}
+
+.helix.is-live .helix__rung {
+  animation-play-state: running;
+}
+
+@keyframes helix-spin {
+  from {
+    transform: rotateX(0deg);
+  }
+  to {
+    transform: rotateX(360deg);
+  }
+}
+
+/* The base-pair bond itself. */
+.helix__bar {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--line-bright);
+  opacity: 0.5;
+  transition:
+    background 200ms ease,
+    opacity 200ms ease;
+}
+
+/* The two backbone nodes, one at each end of the bar. Rotation carries them
+   through depth, so one is always nearer the viewer than the other. */
+.helix__node {
+  position: absolute;
+  left: 50%;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: var(--line-bright);
+  transition:
+    background 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
+}
+
+.helix__node--front {
+  top: 0;
+}
+
+.helix__node--back {
+  bottom: 0;
+}
+
+/* Bonded: the pair is solved, and takes the organism's colour. */
+.helix__rung.is-bonded .helix__bar {
+  background: hsl(var(--helix-hue) 80% 60%);
+  opacity: 0.85;
+}
+
+.helix__rung.is-bonded .helix__node {
+  background: hsl(var(--helix-hue) 85% 64%);
+  box-shadow:
+    0 0 10px hsl(var(--helix-hue) 90% 60% / 0.75),
+    0 0 22px hsl(var(--helix-hue) 90% 55% / 0.35);
+}
+
+/* The newest bond flashes in the colour of the symbol that made it. Only ever
+   applied to a rung that is already bonded — see the note in ui/helix.ts. */
+.helix__rung.is-fresh .helix__node {
+  background: var(--flash, hsl(var(--helix-hue) 85% 64%));
+  box-shadow:
+    0 0 16px var(--flash, hsl(var(--helix-hue) 90% 60%)),
+    0 0 34px var(--flash, hsl(var(--helix-hue) 90% 55%));
+  transform: scale(1.6);
+}
+
+.helix__rung.is-fresh .helix__bar {
+  background: var(--flash, hsl(var(--helix-hue) 80% 60%));
+  opacity: 1;
+}
+
+/* Genome complete: a wave of light runs the length of the strand. */
+.helix.is-evolving .helix__rung {
+  animation:
+    helix-spin var(--helix-spin) linear infinite,
+    helix-surge 600ms ease-out;
+  animation-delay: calc(var(--i) * var(--helix-stagger)),
+    calc(var(--i) * 12ms);
+  animation-play-state: running, running;
+}
+
+@keyframes helix-surge {
+  40% {
+    filter: brightness(2.6) saturate(1.4);
+  }
+}
+
+/* The kill screen. Nobody is going to see this.
+   No filter here on purpose: .screen--game.is-anomaly already inverts the
+   whole screen, and a second inversion inside it would cancel back to normal
+   and leave the helix looking like the only sane thing on screen. */
+.helix.is-anomaly {
+  --helix-spin: 1.4s;
+  --helix-stagger: -0.02s;
+  animation: helix-glitch 3.1s steps(3, end) infinite;
+}
+
+@keyframes helix-glitch {
+  0%,
+  88% {
+    transform: none;
+  }
+  90% {
+    transform: translateX(-4px) skewX(6deg);
+  }
+  93% {
+    transform: translateX(5px) skewX(-4deg);
+  }
+  96% {
+    transform: none;
+  }
+}
+
+@media (pointer: coarse) {
+  .helix {
+    --helix-rungs: 24;
+    --helix-height: 48px;
+    max-width: 92vw;
+  }
+
+  .helix__node {
+    width: 8px;
+    height: 8px;
+    margin-left: -4px;
+  }
+}
+
+@media (max-width: 420px) {
+  .helix {
+    --helix-rungs: 18;
+  }
+}
+
+/* Landscape phones have no vertical room to spare. */
+@media (pointer: coarse) and (max-height: 460px) {
+  .helix {
+    --helix-height: 34px;
+    --helix-rungs: 20;
+  }
+}
+
+/*
+ * Reduced motion: the helix stops turning entirely. It keeps its shape by
+ * freezing each rung at the phase it would have had, so it still reads as a
+ * double helix — the information (how much is bonded) is carried by colour,
+ * which is unaffected.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .helix,
+  .helix.is-live .helix__rung,
+  .helix.is-evolving .helix__rung {
+    animation: none;
+  }
+
+  .helix__rung {
+    animation: none;
+    transform: rotateX(calc(var(--i) * 36deg));
+  }
+
+  .helix.is-fresh .helix__node,
+  .helix__rung.is-fresh .helix__node {
+    transform: none;
+  }
+}

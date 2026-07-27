@@ -32,6 +32,7 @@ import {
   type TimeWindow,
 } from '../leaderboard/index.ts'
 import { createBoard, type Board } from './board.ts'
+import { createHelix, type Helix } from './helix.ts'
 import type { Tones } from './audio.ts'
 
 export interface Screen {
@@ -218,9 +219,16 @@ export type StatusTone = 'watch' | 'go' | 'good' | 'bad' | 'paused'
 
 export interface GameScreen extends Screen {
   readonly board: Board
+  readonly helix: Helix
   setRound(round: number): void
   /** The organism being solved, and how far into its genome the run is. */
-  setEvolution(level: number, organism: string, bonded: number, genome: number): void
+  setEvolution(
+    level: number,
+    organism: string,
+    bonded: number,
+    genome: number,
+    hue: number,
+  ): void
   setPoints(points: number): void
   /** A genome completed: announce the new organism and change the palette. */
   evolve(level: number, organism: string): void
@@ -297,6 +305,9 @@ export function createGameScreen({
   banner.className = 'evolve-banner'
   banner.setAttribute('aria-hidden', 'true')
 
+  // The DNA strand: between the level info and the pads, as asked.
+  const helix = createHelix(mode)
+
   // The whole screen is the play area, not just the pad — a click that lands
   // slightly off a pad in clicks mode should still count.
   const board = createBoard({ mode, onInput, surface: element })
@@ -318,7 +329,15 @@ export function createGameScreen({
   controls.className = 'controls'
   controls.append(quit, mute.element)
 
-  element.append(header, banner, board.element, progress, controls, footer)
+  element.append(
+    header,
+    banner,
+    helix.element,
+    board.element,
+    progress,
+    controls,
+    footer,
+  )
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
@@ -331,12 +350,13 @@ export function createGameScreen({
   return {
     element,
     board,
+    helix,
 
     setRound(value) {
       round.textContent = `Round ${value}`
     },
 
-    setEvolution(value, organism, bonded, genome) {
+    setEvolution(value, organism, bonded, genome, hue) {
       organismName.textContent = `Level ${value} · ${organism}`
       const filled = genome === 0 ? 0 : Math.min(bonded / genome, 1)
       genomeFill.style.transform = `scaleX(${filled})`
@@ -344,7 +364,9 @@ export function createGameScreen({
         'aria-label',
         `${bonded} of ${genome} base pairs bonded`,
       )
-      // Phase 2 hangs the helix palette off this.
+      helix.setGenome(bonded, genome, hue)
+      // Tints the screen's backdrop to match the organism.
+      element.style.setProperty('--level-hue', String(hue))
       element.dataset.level = String(value)
     },
 
@@ -354,6 +376,7 @@ export function createGameScreen({
 
     setAnomaly(anomaly) {
       element.classList.toggle('is-anomaly', anomaly)
+      helix.setAnomaly(anomaly)
     },
 
     celebrate() {
@@ -369,6 +392,7 @@ export function createGameScreen({
       // The organism the run just *became* is the one after the genome that
       // completed, which setEvolution paints on the next round event.
       banner.textContent = `${organism} → ${organismFor(value + 1).name}`
+      helix.evolve()
       element.classList.remove('is-evolving')
       void element.offsetWidth
       element.classList.add('is-evolving')
@@ -414,6 +438,7 @@ export function createGameScreen({
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
       mute.destroy()
+      helix.destroy()
       board.destroy()
       element.remove()
     },

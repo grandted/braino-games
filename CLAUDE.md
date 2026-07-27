@@ -88,6 +88,7 @@ src/
 ├── ui/
 │   ├── screens.ts       menu / game / gameover / leaderboard
 │   ├── board.ts         renders the pad, flash animation, all input
+│   ├── helix.ts         the 3D DNA strand (genome progress)
 │   └── audio.ts         per-symbol tones
 ├── leaderboard/
 │   ├── types.ts         Provider interface, Entry, windows, shared rules
@@ -136,7 +137,14 @@ compares them; run it after any change to the order.
    cue has to fit inside that window rather than extending it.
 6. **Every state is reachable by keyboard alone, by mouse alone, and by
    touch alone.** Including menu navigation and retry.
-7. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
+7. **Nothing competes with the playback timers.** The helix and every cue
+   animate `transform`/`opacity` only, on the compositor. No
+   `requestAnimationFrame`, no animating layout properties — a dropped
+   frame during playback is a round the player loses unfairly.
+8. **An unbonded helix rung never shows a symbol colour.** The strand sits
+   directly above the pads; colouring an unsolved rung would put the
+   answer on screen. Colour arrives only on bonding.
+9. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
    touchscreen has no right button — a tap reads which *pad* it hit. That
    rule lives in `resolvePointer()` in `ui/board.ts`; change it there and
    nowhere else.

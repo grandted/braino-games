@@ -71,7 +71,33 @@
 }
 
 .screen--game {
-  gap: 22px;
+  gap: 18px;
+  --level-hue: 285;
+  position: relative;
+}
+
+/* Each organism tints the backdrop. It shifts on evolution, the way Tetris
+   changes colour every tenth line. */
+.screen--game::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 90% 55% at 50% 42%,
+    hsl(var(--level-hue) 70% 55% / 0.16),
+    transparent 72%
+  );
+  transition: background 900ms ease;
+}
+
+.screen--game.is-anomaly::before {
+  background: radial-gradient(
+    ellipse 90% 55% at 50% 42%,
+    hsl(0 0% 60% / 0.2),
+    transparent 72%
+  );
 }
 
 .hud {
@@ -138,7 +164,7 @@
   transition: transform 180ms ease-out;
 }
 
-/* The Tetris moment. Phase 2 turns this into the full helix transition. */
+/* The Tetris moment: announced here, and swept along the strand by helix.css. */
 .evolve-banner {
   font: 800 clamp(18px, 4vw, 26px) / 1 var(--sans);
   letter-spacing: -0.02em;
@@ -256,9 +282,7 @@
   .screen--game.is-anomaly {
     filter: invert(1) hue-rotate(180deg) saturate(0.4);
   }
-}
 
-@media (prefers-reduced-motion: reduce) {
   .screen--game.is-evolving .evolve-banner {
     animation: none;
     opacity: 1;
@@ -706,6 +730,20 @@
   .screen--game .board {
     /* Sink the pads to the bottom of the screen. */
     margin-top: auto;
+  }
+
+  /* The strand sits between the HUD and the pads on a phone too. */
+  .screen--game .helix {
+    margin-block: auto;
+  }
+
+  .screen--game .progress {
+    max-width: 70vw;
+  }
+
+  .screen--game .progress__tick {
+    width: 12px;
+    height: 4px;
   }
 
   .screen--game .hud__points {

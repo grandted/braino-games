@@ -167,23 +167,42 @@ from what the engine can actually award.
 
 ---
 
-## Phase 2 — the DNA helix
+## The DNA helix
 
-Not built yet. Sketched here so the shape is on record.
+The strand sits between the level info and the pads, centred on desktop and
+phone, and shows how much of the current organism's genome is solved.
 
-The strand represents the current organism's genome, sitting between the level
-info and the pads, centred on desktop and phone. Rungs bond as base pairs are
-earned; the backbone knits closed behind them. Rendered with CSS 3D transforms
-so the helix genuinely rotates, compositor-only, no `requestAnimationFrame` —
-the playback loop is timing-sensitive and nothing may compete with it.
+Each rung is a base-pair bond with a node at either end, spinning about the
+horizontal axis. Neighbouring rungs are offset in phase, so the two node trails
+trace a double helix and swap depth as they turn; perspective scales the near
+node up and the far one down, which is what makes it read as 3D rather than as
+a flat wave.
 
-Each organism carries a palette and background that change on evolution, the
-way Tetris changes at every tenth line.
+**Rungs are literal while they can be.** Below the cap (40 on desktop, 24 on
+touch, 18 on narrow phones) one rung is one base pair — so a virus genuinely
+shows three rungs and a bacterium eighteen. Above the cap each rung is a chunk.
+The one rule that matters: **a full strand always means a full genome.** Fill is
+floored rather than rounded, and only `bonded >= genome` may light the last
+rung, so the strand never promises an evolution that has not happened.
 
-**Anti-spoiler rule**: an unbonded rung must never show its symbol's colour, or
-the strand becomes a cheat sheet sitting directly above the pads. Colour
-arrives on bonding, or momentarily during playback when the pad is showing that
-symbol anyway.
+**The strand carries the locked state.** It hangs still and dim during
+playback, and spins up and brightens when it is the player's turn. That is
+invariant 1 made visible, rather than decoration competing with the pads for
+attention during playback.
+
+Colour comes from the organism's hue, which also tints the screen backdrop and
+shifts on evolution the way Tetris changes colour every tenth line. Completing
+a genome runs a wave of light along the strand.
+
+**Anti-spoiler rule**: only a rung that is already bonded ever takes a symbol
+colour — the newest bond flashes in the colour of the input that made it. An
+unbonded rung showing its symbol would be a cheat sheet directly above the
+pads.
+
+Everything animated is `transform` or `opacity`, one CSS animation per rung, no
+`requestAnimationFrame`. Under `prefers-reduced-motion` the strand freezes at
+its helical shape and stops turning; the information it carries is colour, so
+nothing is lost.
 
 ---
 
@@ -202,4 +221,5 @@ symbol anyway.
 - [x] old table dropped and replaced on first start
 - [x] `npm run build` and `npm run typecheck` clean (client + server)
 - [ ] Phase 1 playtested — does the slower ladder feel right?
-- [ ] Phase 2: the 3D DNA helix
+- [x] 3D DNA helix, per-organism palette, evolution sweep
+- [ ] Helix seen on a real screen (desktop and phone)
