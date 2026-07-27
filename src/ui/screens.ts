@@ -8,19 +8,66 @@
 import { MODES, type ModeDef, type SymbolId } from '../game/modes.ts'
 import type { RunStats } from '../game/engine.ts'
 import { createBoard, type Board } from './board.ts'
+import type { Tones } from './audio.ts'
 
 export interface Screen {
   readonly element: HTMLElement
   destroy(): void
 }
 
+/**
+ * Mute toggle. Every screen carries one so the shortcut works wherever the
+ * player is, and the state it shows comes straight from `tones`.
+ */
+function createMuteButton(tones: Tones): {
+  element: HTMLButtonElement
+  destroy(): void
+} {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'btn btn--ghost mute'
+  // Not a game input and not a retry — just a toggle.
+  element.dataset.noInput = ''
+  element.dataset.noRetry = ''
+
+  function render(): void {
+    element.textContent = tones.muted ? 'sound off' : 'sound on'
+    element.dataset.on = String(!tones.muted)
+    element.setAttribute('aria-pressed', String(!tones.muted))
+  }
+
+  function toggle(): void {
+    tones.toggleMute()
+    render()
+  }
+
+  function onKeyDown(event: KeyboardEvent): void {
+    if (event.key !== 'm' && event.key !== 'M') return
+    event.preventDefault()
+    if (event.repeat) return
+    toggle()
+  }
+
+  render()
+  element.addEventListener('click', toggle)
+  window.addEventListener('keydown', onKeyDown)
+
+  return {
+    element,
+    destroy() {
+      window.removeEventListener('keydown', onKeyDown)
+    },
+  }
+}
+
 /* Menu -------------------------------------------------------------------- */
 
 export interface MenuScreenOptions {
   readonly onPick: (mode: ModeDef) => void
+  readonly tones: Tones
 }
 
-export function createMenuScreen({ onPick }: MenuScreenOptions): Screen {
+export function createMenuScreen({ onPick, tones }: MenuScreenOptions): Screen {
   const element = document.createElement('section')
   element.className = 'screen screen--menu'
 
@@ -63,9 +110,12 @@ export function createMenuScreen({ onPick }: MenuScreenOptions): Screen {
   const hint = document.createElement('p')
   hint.className = 'hint'
   hint.innerHTML =
-    'Move with <kbd>↑</kbd><kbd>↓</kbd>, pick with <kbd>enter</kbd> — or just click.'
+    'Move with <kbd>↑</kbd><kbd>↓</kbd>, pick with <kbd>enter</kbd> — or just click. ' +
+    'Three lives a run. <kbd>m</kbd> mutes.'
 
-  element.append(title, subtitle, list, hint)
+  const mute = createMuteButton(tones)
+
+  element.append(title, subtitle, list, hint, mute.element)
 
   // Roving focus so arrow keys work as well as tab.
   function onKeyDown(event: KeyboardEvent): void {
@@ -97,6 +147,7 @@ export function createMenuScreen({ onPick }: MenuScreenOptions): Screen {
     element,
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
+      mute.destroy()
       element.remove()
     },
   }
@@ -119,12 +170,14 @@ export interface GameScreenOptions {
   readonly mode: ModeDef
   readonly onInput: (symbol: SymbolId) => void
   readonly onExit: () => void
+  readonly tones: Tones
 }
 
 export function createGameScreen({
   mode,
   onInput,
   onExit,
+  tones,
 }: GameScreenOptions): GameScreen {
   const element = document.createElement('section')
   element.className = 'screen screen--game'
@@ -159,7 +212,7 @@ export function createGameScreen({
 
   const footer = document.createElement('footer')
   footer.className = 'hint'
-  footer.innerHTML = 'Give up with <kbd>esc</kbd>'
+  footer.innerHTML = 'Give up with <kbd>esc</kbd> · mute with <kbd>m</kbd>'
 
   const quit = document.createElement('button')
   quit.type = 'button'
@@ -168,7 +221,13 @@ export function createGameScreen({
   quit.textContent = 'Menu'
   quit.addEventListener('click', onExit)
 
-  element.append(header, board.element, progress, quit, footer)
+  const mute = createMuteButton(tones)
+
+  const controls = document.createElement('div')
+  controls.className = 'controls'
+  controls.append(quit, mute.element)
+
+  element.append(header, board.element, progress, controls, footer)
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
@@ -222,6 +281,7 @@ export function createGameScreen({
 
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
+      mute.destroy()
       board.destroy()
       element.remove()
     },
@@ -238,6 +298,7 @@ export interface GameOverScreenOptions {
   readonly stats: RunStats
   readonly onRetry: () => void
   readonly onMenu: () => void
+  readonly tones: Tones
 }
 
 export function createGameOverScreen({
@@ -245,6 +306,7 @@ export function createGameOverScreen({
   stats,
   onRetry,
   onMenu,
+  tones,
 }: GameOverScreenOptions): Screen {
   const element = document.createElement('section')
   element.className = 'screen screen--over'
@@ -287,19 +349,24 @@ export function createGameOverScreen({
   menu.textContent = 'Menu'
   menu.addEventListener('click', onMenu)
 
+  const mute = createMuteButton(tones)
+
   const actions = document.createElement('div')
   actions.className = 'over__actions'
-  actions.append(retry, menu)
+  actions.append(retry, menu, mute.element)
 
   const hint = document.createElement('p')
   hint.className = 'hint'
-  hint.innerHTML = 'Any key or click to retry · <kbd>esc</kbd> for the menu'
+  hint.innerHTML =
+    'Any key or click to retry · <kbd>esc</kbd> for the menu · <kbd>m</kbd> mutes'
 
   element.append(heading, score, modeTag, statList, actions, hint)
 
   // Retry must cost exactly one input, whichever device the player is on.
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Tab' || MODIFIER_KEYS.has(event.key)) return
+    // 'm' belongs to the mute toggle on every screen, this one included.
+    if (event.key === 'm' || event.key === 'M') return
     event.preventDefault()
     if (event.repeat) return
     if (event.key === 'Escape') onMenu()
@@ -328,6 +395,7 @@ export function createGameOverScreen({
       window.removeEventListener('keydown', onKeyDown)
       element.removeEventListener('mousedown', onMouseDown)
       element.removeEventListener('contextmenu', onContextMenu)
+      mute.destroy()
       element.remove()
     },
   }

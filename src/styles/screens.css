@@ -183,6 +183,36 @@
   }
 }
 
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mute {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font: 600 13px/1 var(--mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+}
+
+.mute::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--line-bright);
+  transition: background 140ms ease;
+}
+
+.mute[data-on='true']::before {
+  background: var(--ok);
+}
+
 /* Game over --------------------------------------------------------------- */
 
 .screen--over {

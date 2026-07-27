@@ -3,7 +3,8 @@ import './styles/board.css'
 import './styles/screens.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
-import { RULES, getSymbol, type ModeDef } from './game/modes.ts'
+import { RULES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
+import { createTones } from './ui/audio.ts'
 import {
   createGameOverScreen,
   createGameScreen,
@@ -19,6 +20,7 @@ function mountPoint(): HTMLElement {
 }
 
 const app = mountPoint()
+const tones = createTones()
 
 let current: Screen | null = null
 let leaveCurrent: (() => void) | null = null
@@ -33,7 +35,7 @@ function show(screen: Screen, onLeave?: () => void): void {
 }
 
 function showMenu(): void {
-  show(createMenuScreen({ onPick: playMode }))
+  show(createMenuScreen({ onPick: playMode, tones }))
 }
 
 function showGameOver(mode: ModeDef, stats: RunStats): void {
@@ -41,6 +43,7 @@ function showGameOver(mode: ModeDef, stats: RunStats): void {
     createGameOverScreen({
       mode,
       stats,
+      tones,
       onRetry: () => playMode(mode),
       onMenu: showMenu,
     }),
@@ -75,15 +78,20 @@ function playMode(mode: ModeDef): void {
 
       case 'flashOn':
         screen.board.flash(event.symbol, event.durationMs)
+        // The tone is held for exactly the flash — sound and motion together
+        // are what make the sequence stick.
+        tones.play(getSymbol(mode, event.symbol), event.durationMs)
         break
 
       case 'accept':
         screen.board.pressed(event.symbol)
+        tones.play(getSymbol(mode, event.symbol), TIMING.inputFlashMs)
         screen.setProgress(event.index + 1, engine.sequence.length)
         break
 
       case 'levelClear':
         screen.setStatus('clear', 'good')
+        tones.levelClear()
         break
 
       case 'lives':
@@ -101,6 +109,7 @@ function playMode(mode: ModeDef): void {
         screen.setLives(event.livesLeft, RULES.lives)
         screen.board.showMiss(event.expected, event.received)
         screen.shake()
+        tones.miss()
         break
       }
 
@@ -122,8 +131,13 @@ function playMode(mode: ModeDef): void {
   window.addEventListener('blur', onBlur)
   window.addEventListener('focus', onFocus)
 
+  // We're inside the click or keypress that picked the mode, which is the
+  // only moment a browser will let an AudioContext start.
+  tones.resume()
+
   screen = createGameScreen({
     mode,
+    tones,
     onInput: (symbol) => engine.press(symbol),
     onExit: showMenu,
   })
