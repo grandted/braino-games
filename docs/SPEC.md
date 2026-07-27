@@ -170,10 +170,10 @@ Explicitly deferred. Do not build these:
 
 ## Definition of done for v0.1
 
-- [ ] Both modes playable start to finish
-- [ ] Fully playable keyboard-only; fully playable mouse-only
-- [ ] Retry from gameover in one input
+- [x] Both modes playable start to finish
+- [x] Fully playable keyboard-only; fully playable mouse-only
+- [x] Retry from gameover in one input
 - [ ] Local leaderboard writes, reads, sorts, and displays per mode
 - [ ] Tones play, mute toggle persists
-- [ ] `npm run build` clean, `npm run typecheck` clean
+- [x] `npm run build` clean, `npm run typecheck` clean
 - [ ] No console errors across a full run in both modes
