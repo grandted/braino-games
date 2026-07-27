@@ -13,7 +13,7 @@
 .mode-card {
   font: inherit;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 2px 16px;
   text-align: left;
   padding: 18px 22px;
@@ -49,14 +49,46 @@
 }
 
 .mode-card__name {
+  grid-column: 2;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 
+/* What you'll be pressing, in the colours the game uses for it. */
+.mode-card__glyphs {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.mode-card__glyph {
+  font-size: 17px;
+  line-height: 1;
+  color: var(--sym);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--sym) 55%, transparent);
+  transition: transform 160ms ease;
+}
+
+.mode-card:hover .mode-card__glyph,
+.mode-card:focus-visible .mode-card__glyph {
+  transform: translateY(-2px);
+}
+
 .mode-card__tagline {
+  grid-column: 2 / -1;
   color: var(--text-dim);
   font-size: 14px;
+}
+
+/* One line of rules, so a first-time player knows the stakes. */
+.menu-rules {
+  color: var(--text-dim);
+  font-size: 14px;
+  max-width: 42ch;
+  margin-top: -6px;
 }
 
 /* Game -------------------------------------------------------------------- */
@@ -587,6 +619,19 @@
   font-size: clamp(26px, 6vw, 36px);
 }
 
+/* Shown once, straight after saving a run. */
+.placed {
+  font-size: clamp(16px, 4vw, 20px);
+  color: var(--text-dim);
+  margin-top: -8px;
+}
+
+.placed strong {
+  font-size: 1.5em;
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -740,6 +785,24 @@
   }
 }
 
+/* On the narrowest phones the symbol preview drops under the mode name rather
+   than squeezing it. */
+@media (max-width: 360px) {
+  .mode-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .mode-card__glyphs {
+    grid-column: 2;
+    grid-row: 2;
+    margin-block: 2px;
+  }
+
+  .mode-card__tagline {
+    grid-row: 3;
+  }
+}
+
 /* Touch layout ------------------------------------------------------------
  * Phone play: HUD at the top, pads pushed to the bottom where the thumbs are,
  * everything else compressed so a round never needs scrolling.
@@ -803,6 +866,10 @@
 
   .mode-card {
     padding: 16px 18px;
+  }
+
+  .mode-card__glyph {
+    font-size: 15px;
   }
 
   .wordmark {

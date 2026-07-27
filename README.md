@@ -1,7 +1,10 @@
 # Tangent
 
-A muscle-memory game for your browser. Watch a sequence, repeat it, watch
-it grow.
+A pattern grows one step at a time. Keep it in your hands, not your head.
+
+Tangent is a muscle-memory game for the browser. Watch the pattern, play
+it back, and watch it grow by one every round. Every input you get right
+bonds a base pair of DNA — fill a genome and you evolve.
 
 *tangent* — Swedish for a key on a keyboard.
 
@@ -22,17 +25,19 @@ To run it the way it ships, as one process on one port:
 npm start           # builds, then serves the game and the API on 8787
 ```
 
-Works on a phone: the pads become virtual arrow keys or virtual mouse
-buttons depending on the mode you pick. To play on one over your local
-network, run `npm run dev -- --host` and use the printed address.
+To play on a phone over your local network, run `npm run dev -- --host`
+and open the printed address.
 
 ## Modes
 
-**Arrows** — four keys, the standard cluster. Two bits of information per
-step, so sequences get hard fast.
+**Arrows** — four directions, in the standard cluster. Twice the
+information per step, so patterns turn brutal fast.
 
-**Clicks** — left and right mouse button. Lower entropy, longer runs,
-different kind of hard.
+**Clicks** — left and right mouse button. Longer runs, and a different
+kind of hard.
+
+On a phone both become virtual controls: four thumb pads for Arrows, two
+large ones for Clicks.
 
 ## How it works
 
@@ -49,10 +54,11 @@ fifth at 25. Most runs end around the amoeba.
 
 Clear a round that's a multiple of 100 and you gain a life. Nobody has.
 
-Speed increases with each round. There's no time limit on your inputs.
+The pattern plays faster every round, but there's no clock on your
+inputs — take as long as you like.
 
-You get three lives. A wrong input spends one and replays the same round
-— same sequence, another go at it. The third miss ends the run.
+You get three lives. A wrong input spends one and replays the same round,
+same pattern, another go at it. The third miss ends the run.
 
 **Points** are what the board ranks on, and they reward speed: each round
 pays for its depth multiplied by how fast you answered it, plus a bonus
@@ -74,11 +80,11 @@ trying to be.
 
 ## Status
 
-**v0.3** — evolution levels, points, global leaderboard, mobile play.
+**v0.3** — evolution levels, points, the 3D helix, a global board, and
+phone play. Release candidate for 1.0.
 
 Roadmap:
-- v0.3 phase 2 — the animated 3D DNA helix
-- v0.4 — additional modes (WASD, numpad, mixed)
+- v1.1 — additional modes (WASD, numpad, mixed)
 
 ## Docs
 

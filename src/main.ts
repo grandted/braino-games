@@ -46,7 +46,11 @@ function showMenu(): void {
     }),
   )
 }
-function showLeaderboard(mode: ModeDef, highlight?: string): void {
+function showLeaderboard(
+  mode: ModeDef,
+  highlight?: string,
+  rank?: number,
+): void {
   show(
     createLeaderboardScreen({
       provider: leaderboard,
@@ -56,6 +60,7 @@ function showLeaderboard(mode: ModeDef, highlight?: string): void {
       initialWindow: highlight === undefined ? undefined : '24h',
       tones,
       highlight,
+      rank,
       firstRunOfSession: runsThisSession === 1,
       onBack: showMenu,
     }),
@@ -70,7 +75,8 @@ function showGameOver(mode: ModeDef, stats: RunStats): void {
       provider: leaderboard,
       onRetry: () => playMode(mode),
       onMenu: showMenu,
-      onShowLeaderboard: (highlight) => showLeaderboard(mode, highlight),
+      onShowLeaderboard: (highlight, rank) =>
+        showLeaderboard(mode, highlight, rank),
     }),
   )
 }
@@ -105,7 +111,7 @@ function playMode(mode: ModeDef): void {
         if (event.phase === 'playback') screen.setStatus('watch', 'watch')
         else if (event.phase === 'input') screen.setStatus('your turn', 'go')
         else if (event.phase === 'paused')
-          screen.setStatus('focus lost — replaying', 'paused')
+          screen.setStatus('paused · replaying', 'paused')
         break
       case 'flashOn':
         screen.board.flash(event.symbol, event.durationMs)
@@ -128,7 +134,7 @@ function playMode(mode: ModeDef): void {
         break
       case 'evolve':
         // The Tetris moment: a genome completed, so the run changes species.
-        screen.setStatus(`evolved · ${event.organism}`, 'good')
+        screen.setStatus('evolved', 'good')
         screen.setPoints(event.totalPoints)
         screen.evolve(event.level, event.organism)
         tones.evolve()
@@ -139,7 +145,7 @@ function playMode(mode: ModeDef): void {
       case 'freeLife':
         // Round 100. Nobody has seen this happen.
         screen.setLives(event.left, event.max)
-        screen.setStatus(`round ${event.round} · free life`, 'good')
+        screen.setStatus(`round ${event.round} · extra life`, 'good')
         screen.celebrate()
         tones.evolve()
         break
@@ -147,8 +153,8 @@ function playMode(mode: ModeDef): void {
         const expected = getSymbol(mode, event.expected).name
         screen.setStatus(
           event.livesLeft === 0
-            ? `it was ${expected} — out`
-            : `it was ${expected} — ${livesLabel(event.livesLeft)} left`,
+            ? `it was ${expected} · out of lives`
+            : `it was ${expected} · ${livesLabel(event.livesLeft)} left`,
           'bad',
         )
         screen.setLives(event.livesLeft, engine.livesMax)

@@ -65,8 +65,8 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
     // Offline, DNS, connection refused, or our own timeout.
     throw new LeaderboardError(
       controller.signal.aborted
-        ? 'the board took too long to answer'
-        : "can't reach the board",
+        ? 'The board took too long to answer'
+        : "Can't reach the board",
       { cause: error },
     )
   } finally {
@@ -81,10 +81,10 @@ async function request<T>(url: string, init: RequestInit): Promise<T> {
       payload !== null &&
       typeof (payload as { error?: unknown }).error === 'string'
         ? (payload as { error: string }).error
-        : `the board answered ${response.status}`
+        : `The board answered ${response.status}`
     throw new LeaderboardError(reason)
   }
 
-  if (payload === null) throw new LeaderboardError('the board sent nonsense')
+  if (payload === null) throw new LeaderboardError('The board sent nonsense')
   return payload as T
 }

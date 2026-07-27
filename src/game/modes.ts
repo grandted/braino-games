@@ -43,7 +43,8 @@ export interface ModeDef {
 const ARROWS: ModeDef = {
   id: 'arrows',
   name: 'Arrows',
-  tagline: 'Four keys, two bits a step. Gets hard fast.',
+  // Device-neutral on purpose: on a phone these are four pads, not four keys.
+  tagline: 'Four directions. Patterns turn brutal fast.',
   layout: 'cluster',
   symbols: [
     {
@@ -88,7 +89,7 @@ const ARROWS: ModeDef = {
 const CLICKS: ModeDef = {
   id: 'clicks',
   name: 'Clicks',
-  tagline: 'Two buttons, one bit a step. Longer runs, different hard.',
+  tagline: 'Two buttons. Longer runs, a different kind of hard.',
   layout: 'split',
   symbols: [
     {

@@ -128,7 +128,7 @@ export function createMenuScreen({
   const subtitle = document.createElement('p')
   subtitle.className = 'subtitle'
   subtitle.textContent =
-    'Watch the sequence. Repeat it. It grows by one every round.'
+    'A pattern grows one step at a time. Keep it in your hands, not your head.'
 
   const list = document.createElement('div')
   list.className = 'mode-list'
@@ -147,20 +147,37 @@ export function createMenuScreen({
     name.className = 'mode-card__name'
     name.textContent = mode.name
 
+    // A preview of what you'll actually be pressing, in the colours the game
+    // uses for them. Teaches the mode and gives the menu some colour.
+    const glyphs = document.createElement('span')
+    glyphs.className = 'mode-card__glyphs'
+    for (const symbol of mode.symbols) {
+      const glyph = document.createElement('span')
+      glyph.className = 'mode-card__glyph'
+      glyph.style.setProperty('--sym', `var(${symbol.colorVar})`)
+      glyph.textContent = symbol.glyph
+      glyphs.append(glyph)
+    }
+
     const tagline = document.createElement('span')
     tagline.className = 'mode-card__tagline'
     tagline.textContent = mode.tagline
 
-    button.append(number, name, tagline)
+    button.append(number, name, glyphs, tagline)
     button.addEventListener('click', () => onPick(mode))
     list.append(button)
     return button
   })
 
+  const rules = document.createElement('p')
+  rules.className = 'menu-rules'
+  rules.textContent =
+    'Three lives. Miss and the round replays. Solve it faster to score more.'
+
   const hint = createHint(
-    'Move with <kbd>↑</kbd><kbd>↓</kbd>, pick with <kbd>enter</kbd> — or just ' +
-      'click. Three lives a run. <kbd>m</kbd> mutes.',
-    'Tap a mode to start. Three lives a run.',
+    '<kbd>↑</kbd><kbd>↓</kbd> to choose · <kbd>enter</kbd> to start · ' +
+      '<kbd>m</kbd> for sound',
+    'Tap a mode to begin.',
   )
 
   const mute = createMuteButton(tones)
@@ -175,7 +192,7 @@ export function createMenuScreen({
   controls.className = 'controls'
   controls.append(board, mute.element)
 
-  element.append(title, subtitle, list, hint, controls)
+  element.append(title, subtitle, list, rules, hint, controls)
 
   // Roving focus so arrow keys work as well as tab.
   function onKeyDown(event: KeyboardEvent): void {
@@ -313,14 +330,14 @@ export function createGameScreen({
   const board = createBoard({ mode, onInput, surface: element })
 
   const footer = createHint(
-    'Give up with <kbd>esc</kbd> · mute with <kbd>m</kbd>',
-    'Tap the pads to answer.',
+    '<kbd>esc</kbd> to quit · <kbd>m</kbd> for sound',
+    'Tap the pads in order.',
   )
 
   const quit = document.createElement('button')
   quit.type = 'button'
   quit.className = 'btn btn--ghost'
-  quit.textContent = 'Menu'
+  quit.textContent = 'Quit'
   quit.addEventListener('click', onExit)
 
   const mute = createMuteButton(tones)
@@ -459,8 +476,8 @@ export interface GameOverScreenOptions {
   readonly stats: RunStats
   readonly onRetry: () => void
   readonly onMenu: () => void
-  /** `highlight` is the achievedAt of a run just saved, if any. */
-  readonly onShowLeaderboard: (highlight?: string) => void
+  /** `highlight` is the id of a run just saved, with the rank it earned. */
+  readonly onShowLeaderboard: (highlight?: string, rank?: number) => void
   readonly provider: LeaderboardProvider
   readonly tones: Tones
 }
@@ -479,7 +496,7 @@ export function createGameOverScreen({
 
   const heading = document.createElement('h2')
   heading.className = 'over__heading'
-  heading.textContent = stats.rounds === 0 ? 'Out of lives' : 'Run over'
+  heading.textContent = headingFor(stats.rounds)
 
   const score = document.createElement('p')
   score.className = 'over__score'
@@ -493,7 +510,7 @@ export function createGameOverScreen({
   reached.textContent =
     stats.rounds === 0
       ? 'Still a single cell'
-      : `Level ${stats.level} · ${stats.organism} · ${stats.rounds} ${stats.rounds === 1 ? 'round' : 'rounds'}`
+      : `Level ${stats.level} · ${stats.organism} · round ${stats.rounds}`
 
   const modeTag = document.createElement('p')
   modeTag.className = 'over__mode'
@@ -512,7 +529,7 @@ export function createGameOverScreen({
   const retry = document.createElement('button')
   retry.type = 'button'
   retry.className = 'btn btn--retry'
-  retry.textContent = 'Retry'
+  retry.textContent = 'Play again'
   retry.addEventListener('click', onRetry)
 
   const menu = document.createElement('button')
@@ -534,7 +551,7 @@ export function createGameOverScreen({
   actions.append(retry, menu, boardButton, mute.element)
 
   const hint = createHint(
-    'Any key or click to retry · <kbd>esc</kbd> for the menu · <kbd>m</kbd> mutes',
+    'Any key to play again · <kbd>esc</kbd> for the menu · <kbd>m</kbd> for sound',
     'Tap anywhere to play again.',
   )
 
@@ -553,7 +570,7 @@ export function createGameOverScreen({
     const label = document.createElement('label')
     label.className = 'submit__label'
     label.htmlFor = 'nickname'
-    label.textContent = `Save to ${provider.label.toLowerCase()}`
+    label.textContent = 'Put it on the board'
 
     const input = document.createElement('input')
     input.id = 'nickname'
@@ -584,7 +601,7 @@ export function createGameOverScreen({
       event.preventDefault()
       const nickname = normaliseNickname(input.value)
       if (!isValidNickname(nickname)) {
-        note.textContent = `Nickname needs ${NICKNAME_MIN}–${NICKNAME_MAX} characters`
+        note.textContent = `Pick a name of ${NICKNAME_MIN}–${NICKNAME_MAX} characters`
         note.dataset.error = 'true'
         input.focus()
         return
@@ -594,7 +611,7 @@ export function createGameOverScreen({
       input.disabled = true
       save.textContent = 'Saving…'
       delete note.dataset.error
-      note.textContent = 'Sending your run to the board…'
+      note.textContent = 'Sending your run…'
       rememberNickname(nickname)
 
       void provider
@@ -609,7 +626,7 @@ export function createGameOverScreen({
           totalInputs: stats.totalInputs,
           runDurationMs: stats.runDurationMs,
         })
-        .then((result) => onShowLeaderboard(result.entry.id))
+        .then((result) => onShowLeaderboard(result.entry.id, result.rank ?? undefined))
         .catch((error: unknown) => {
           // The run is not lost — the form comes back so it can be retried.
           save.disabled = false
@@ -617,7 +634,7 @@ export function createGameOverScreen({
           save.textContent = 'Save'
           note.textContent =
             error instanceof Error
-              ? `Couldn't save: ${error.message}`
+              ? `Couldn't save — ${error.message}`
               : "Couldn't save that run"
           note.dataset.error = 'true'
         })
@@ -696,6 +713,8 @@ export interface LeaderboardScreenOptions {
   readonly tones: Tones
   /** `id` of a run just saved, highlighted in the list. */
   readonly highlight?: string
+  /** All-time rank of that run, announced above the board. */
+  readonly rank?: number
   readonly firstRunOfSession?: boolean
 }
 
@@ -706,6 +725,7 @@ export function createLeaderboardScreen({
   onBack,
   tones,
   highlight,
+  rank,
   firstRunOfSession,
 }: LeaderboardScreenOptions): Screen {
   const element = document.createElement('section')
@@ -725,7 +745,7 @@ export function createLeaderboardScreen({
   const note = document.createElement('p')
   note.className = 'hint'
   note.textContent =
-    'Everyone who plays this server. Ranked per mode — the two are never merged.'
+    'Every player, ranked on points. Arrows and Clicks are scored separately.'
 
   const tabs = document.createElement('div')
   tabs.className = 'tabs'
@@ -777,7 +797,18 @@ export function createLeaderboardScreen({
     'Tap a mode or a period to switch.',
   )
 
-  element.append(title, note, tabs, windows, list, controls, hint)
+  // Only after saving a run: the one number the player actually wants.
+  if (rank !== undefined) {
+    const placed = document.createElement('p')
+    placed.className = 'placed'
+    placed.innerHTML =
+      rank === 1
+        ? 'You are <strong>#1</strong> of all time'
+        : `You placed <strong>#${rank}</strong> of all time`
+    element.append(title, placed, note, tabs, windows, list, controls, hint)
+  } else {
+    element.append(title, note, tabs, windows, list, controls, hint)
+  }
 
   function select(nextMode: ModeDef, nextWindow: TimeWindow): void {
     shown = nextMode
@@ -804,7 +835,7 @@ export function createLeaderboardScreen({
     requestId += 1
     const ticket = requestId
 
-    renderMessage('Loading…', 'loading')
+    renderMessage('Reading the board…', 'loading')
 
     try {
       const entries = await provider.top(forMode.id, forWindow)
@@ -814,7 +845,7 @@ export function createLeaderboardScreen({
       if (cancelled || ticket !== requestId) return
       // An empty board and an unreachable board must not look the same.
       renderMessage(
-        error instanceof Error ? error.message : "can't reach the board",
+        error instanceof Error ? error.message : "Can't reach the board",
         'error',
         () => void load(),
       )
@@ -846,7 +877,7 @@ export function createLeaderboardScreen({
   function renderEntries(entries: readonly Entry[]): void {
     if (entries.length === 0) {
       renderMessage(
-        `No runs in ${timeWindowLabel(shownWindow).toLowerCase()}. Yours could be first.`,
+        `Nothing here for ${timeWindowLabel(shownWindow).toLowerCase()}. Yours could be first.`,
         'empty',
       )
       return
@@ -964,15 +995,31 @@ function createEntryRow(
   return row
 }
 
+/** A word for how the run went, so the screen isn't the same every time. */
+function headingFor(rounds: number): string {
+  if (rounds === 0) return 'Out of lives'
+  if (rounds < 5) return 'Run over'
+  if (rounds < 14) return 'Good run'
+  if (rounds < 25) return 'Strong run'
+  return 'Serious run'
+}
+
+/** Seconds under a minute, minutes and seconds above it. */
+function formatDuration(ms: number): string {
+  const seconds = Math.round(ms / 1000)
+  if (seconds < 60) return `${seconds}s`
+  return `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s`
+}
+
 function statRows(stats: RunStats): ReadonlyArray<readonly [string, string]> {
   if (stats.totalInputs === 0) return [['Inputs', '0']]
   return [
     ['Rounds', String(stats.rounds)],
-    ['Base pairs', String(stats.basePairs)],
-    ['Avg reaction', `${stats.avgReactionMs} ms`],
+    ['DNA bonded', `${stats.basePairs} bp`],
+    ['Reaction', `${stats.avgReactionMs} ms`],
     ['Fastest', `${stats.fastestInputMs} ms`],
     ['Inputs', String(stats.totalInputs)],
     ['Misses', String(stats.mistakes)],
-    ['Run time', `${(stats.runDurationMs / 1000).toFixed(1)} s`],
+    ['Time', formatDuration(stats.runDurationMs)],
   ]
 }
