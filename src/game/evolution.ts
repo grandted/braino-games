@@ -10,7 +10,7 @@
  *   level 5 at round  25     level 9 at round 129
  *
  * The gaps are 2, 4, 7, 11, 16, 22 … — each one wider than the last — which
- * closes to `round = k + (k-1)k(k+1)/6`, the tetrahedral numbers.
+ * closes to `roundsCleared = k - 1 + (k-1)k(k+1)/6`, the tetrahedral numbers.
  *
  * Calibrated against what people actually do. Most runs end between rounds 8
  * and 20, so a typical run reaches level 3 and a strong one level 4 or 5.
