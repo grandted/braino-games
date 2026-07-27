@@ -36,12 +36,21 @@ export interface Board {
 export interface BoardOptions {
   readonly mode: ModeDef
   readonly onInput: (symbol: SymbolId) => void
+  /**
+   * The play area for mouse purposes — defaults to the pad itself. The game
+   * screen passes its whole root so a click that lands just off a pad still
+   * counts, and so no right-click anywhere in the round opens a browser menu.
+   * Controls marked `data-no-input` (the menu button) stay clickable.
+   */
+  readonly surface?: HTMLElement
 }
 
-export function createBoard({ mode, onInput }: BoardOptions): Board {
+export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   const element = document.createElement('div')
   element.className = `board board--${mode.layout}`
   element.dataset.mode = mode.id
+
+  const playArea = surface ?? element
 
   const pads = new Map<SymbolId, HTMLElement>()
   const timers = new Map<SymbolId, number>()
@@ -65,6 +74,9 @@ export function createBoard({ mode, onInput }: BoardOptions): Board {
   }
 
   function onMouseDown(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null
+    if (target?.closest('[data-no-input]')) return
+
     // In clicks mode the button itself is the symbol, wherever it lands in
     // the play area. In arrows mode the pad you hit is the symbol.
     const byButton = symbolForButton(mode, event.button)
@@ -74,7 +86,7 @@ export function createBoard({ mode, onInput }: BoardOptions): Board {
       return
     }
     if (event.button !== 0) return
-    const pad = (event.target as HTMLElement | null)?.closest('.pad')
+    const pad = target?.closest('.pad')
     const id = pad instanceof HTMLElement ? pad.dataset.symbol : undefined
     if (!id) return
     event.preventDefault()
@@ -87,8 +99,8 @@ export function createBoard({ mode, onInput }: BoardOptions): Board {
   }
 
   window.addEventListener('keydown', onKeyDown)
-  element.addEventListener('mousedown', onMouseDown)
-  element.addEventListener('contextmenu', onContextMenu)
+  playArea.addEventListener('mousedown', onMouseDown)
+  playArea.addEventListener('contextmenu', onContextMenu)
 
   /* Rendering ------------------------------------------------------------ */
 
@@ -152,8 +164,8 @@ export function createBoard({ mode, onInput }: BoardOptions): Board {
 
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
-      element.removeEventListener('mousedown', onMouseDown)
-      element.removeEventListener('contextmenu', onContextMenu)
+      playArea.removeEventListener('mousedown', onMouseDown)
+      playArea.removeEventListener('contextmenu', onContextMenu)
       for (const id of timers.values()) clearTimeout(id)
       timers.clear()
       element.remove()

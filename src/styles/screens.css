@@ -1,1 +1,247 @@
-/* Placeholder — filled in with the screens in the next step. */
+/* Menu ------------------------------------------------------------------- */
+
+.screen--menu .subtitle {
+  margin-top: -14px;
+}
+
+.mode-list {
+  display: grid;
+  gap: 14px;
+  width: min(440px, 100%);
+}
+
+.mode-card {
+  font: inherit;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 16px;
+  text-align: left;
+  padding: 18px 22px;
+  cursor: pointer;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  transition:
+    transform 100ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.mode-card:hover,
+.mode-card:focus-visible {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-raised));
+}
+
+.mode-card:active {
+  transform: translateY(2px);
+}
+
+.mode-card__index {
+  grid-row: span 2;
+  align-self: center;
+  font: 700 15px/1 var(--mono);
+  color: var(--text-dim);
+  border: 1px solid var(--line-bright);
+  border-radius: 8px;
+  padding: 7px 10px;
+}
+
+.mode-card__name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.mode-card__tagline {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+/* Game -------------------------------------------------------------------- */
+
+/* Stretched so nearly the whole viewport is the play area: in clicks mode a
+   mousedown anywhere in here is an input. */
+.screen--game,
+.screen--over {
+  width: 100%;
+  min-height: calc(100svh - 48px);
+  justify-content: center;
+}
+
+.screen--game {
+  gap: 22px;
+}
+
+.hud {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud__mode {
+  font: 700 12px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.hud__level {
+  font-size: clamp(34px, 9vw, 54px);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.hud__status {
+  font: 700 13px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  min-height: 1em;
+  color: var(--text-dim);
+}
+
+.hud__status[data-tone='watch'] {
+  color: var(--accent);
+}
+.hud__status[data-tone='go'] {
+  color: var(--text);
+}
+.hud__status[data-tone='good'] {
+  color: var(--ok);
+}
+.hud__status[data-tone='bad'] {
+  color: var(--danger);
+}
+.hud__status[data-tone='paused'] {
+  color: var(--sym-up);
+}
+
+.progress {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  min-height: 6px;
+  max-width: 320px;
+}
+
+.progress__tick {
+  width: 18px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-bright);
+  transition: background 120ms ease;
+}
+
+.progress__tick.is-done {
+  background: var(--accent);
+}
+
+.is-shaking {
+  animation: shake 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-3px);
+  }
+  20%,
+  80% {
+    transform: translateX(6px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-10px);
+  }
+  40%,
+  60% {
+    transform: translateX(10px);
+  }
+}
+
+/* Game over --------------------------------------------------------------- */
+
+.screen--over {
+  gap: 18px;
+  padding: 8px;
+}
+
+.over__heading {
+  font-size: clamp(30px, 8vw, 44px);
+  color: var(--danger);
+}
+
+.over__score {
+  font-size: clamp(20px, 5vw, 26px);
+  color: var(--text-dim);
+}
+
+.over__score strong {
+  font-size: 1.6em;
+  color: var(--text);
+}
+
+.over__mode {
+  font: 700 12px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 4px 0;
+  padding: 18px;
+  width: 100%;
+  max-width: 460px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.stats dt {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.stats dd {
+  margin: 4px 0 0;
+  font: 700 19px/1 var(--mono);
+  color: var(--text);
+}
+
+.over__actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn--retry {
+  font-size: 19px;
+  padding: 14px 42px;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--bg-raised));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Screen shake swaps for a flat opacity dip. */
+  .is-shaking {
+    animation: shake-reduced 380ms ease-out;
+  }
+
+  @keyframes shake-reduced {
+    50% {
+      opacity: 0.5;
+    }
+  }
+}
