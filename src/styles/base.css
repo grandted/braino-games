@@ -1,0 +1,168 @@
+/* Design tokens + page shell. Every colour in the app comes from here. */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — deep near-black so the pads pop. */
+  --bg: #0a0a0f;
+  --bg-raised: #14141d;
+  --bg-sunken: #06060a;
+  --line: #23232f;
+  --line-bright: #3a3a4d;
+
+  --text: #eceaf5;
+  --text-dim: #8b88a3;
+
+  /* One vivid colour per symbol, consistent everywhere. */
+  --sym-up: #f9e2af;
+  --sym-down: #a6e3a1;
+  --sym-left: #89b4fa;
+  --sym-right: #f38ba8;
+  --sym-click-left: #cba6f7;
+  --sym-click-right: #fab387;
+
+  --accent: #cba6f7;
+  --danger: #f38ba8;
+  --ok: #a6e3a1;
+
+  /* Set per-pad by board.ts to the symbol's own colour. */
+  --sym: var(--accent);
+
+  --radius: 18px;
+  --radius-sm: 10px;
+
+  --sans:
+    ui-sans-serif, system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  font: 16px/1.45 var(--sans);
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background:
+    radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      rgba(203, 166, 247, 0.07),
+      transparent 70%
+    ),
+    var(--bg);
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+p {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Shared building blocks ------------------------------------------------- */
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: min(720px, 100%);
+  text-align: center;
+}
+
+.wordmark {
+  font-size: clamp(48px, 12vw, 88px);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  text-transform: lowercase;
+}
+
+.wordmark em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.subtitle {
+  color: var(--text-dim);
+  max-width: 46ch;
+}
+
+.btn {
+  font: inherit;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--bg-raised);
+  border: 2px solid var(--line-bright);
+  border-radius: var(--radius-sm);
+  padding: 12px 22px;
+  cursor: pointer;
+  transition:
+    transform 90ms ease,
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn:active {
+  transform: translateY(2px);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+kbd {
+  font: 600 12px/1 var(--mono);
+  display: inline-block;
+  padding: 4px 7px;
+  border: 1px solid var(--line-bright);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
