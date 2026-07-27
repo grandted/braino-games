@@ -44,6 +44,12 @@ menu → [pick mode] → playback → input → result
    one life spent, and the *same* level replays from playback. On the
    third miss the run ends and the gameover screen appears.
 
+**The sequence is append-only.** Level 4 is level 3's sequence plus one.
+This is what makes it trainable — regenerating from scratch each level
+would test short-term memory instead of muscle memory.
+
+---
+
 ## Lives
 
 A run has three. They do not regenerate — clearing levels does not buy
@@ -55,10 +61,6 @@ at the pattern they just lost, which is the opposite of drilling.
 
 Lives are a run-level counter and never enter the leaderboard entry —
 the score is still level reached, tiebroken on reaction time.
-
-**The sequence is append-only.** Level 4 is level 3's sequence plus one.
-This is what makes it trainable — regenerating from scratch each level
-would test short-term memory instead of muscle memory.
 
 ---
 
