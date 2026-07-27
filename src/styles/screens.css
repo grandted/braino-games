@@ -179,6 +179,85 @@
   }
 }
 
+/* A free life. Nobody has earned one; it should look like it. */
+.screen--game.is-celebrating .lives {
+  animation: celebrate 600ms ease-out;
+}
+
+@keyframes celebrate {
+  0%,
+  100% {
+    transform: none;
+  }
+  35% {
+    transform: scale(1.5);
+    filter: brightness(1.8);
+  }
+}
+
+/* The kill screen -----------------------------------------------------------
+ * Past the named organisms the game stops looking like itself. Reaching this
+ * means round 231, so approximately nobody will ever see it. Deliberately
+ * absent from the README.
+ */
+
+.screen--game.is-anomaly {
+  animation: anomaly-drift 8s ease-in-out infinite;
+}
+
+.screen--game.is-anomaly .evolution__name,
+.screen--game.is-anomaly .hud__round {
+  color: var(--danger);
+  letter-spacing: 0.3em;
+}
+
+.screen--game.is-anomaly .evolution__fill,
+.screen--game.is-anomaly .progress__tick.is-done {
+  background: var(--danger);
+}
+
+.screen--game.is-anomaly .hud__points {
+  animation: anomaly-flicker 2.7s steps(2, end) infinite;
+}
+
+@keyframes anomaly-drift {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: invert(1) hue-rotate(180deg) saturate(0.4);
+  }
+}
+
+@keyframes anomaly-flicker {
+  0%,
+  92% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 0.15;
+  }
+  96% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen--game.is-anomaly,
+  .screen--game.is-anomaly .hud__points,
+  .screen--game.is-celebrating .lives {
+    animation: none;
+  }
+
+  .screen--game.is-anomaly {
+    filter: invert(1) hue-rotate(180deg) saturate(0.4);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .screen--game.is-evolving .evolve-banner {
     animation: none;

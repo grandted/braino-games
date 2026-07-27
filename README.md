@@ -42,8 +42,12 @@ trainable — you're not memorising a fresh string each round, you're
 building a motor pattern and extending it.
 
 Every correct input bonds one base pair of DNA. Fill a genome and you
-evolve: virus, bacterium, amoeba, sponge, jellyfish, fish, and on up
-toward human at round 21. That's your **level**.
+evolve — virus, bacterium, amoeba, sponge, jellyfish, fish, and on up.
+That's your **level**, and each one costs more rounds than the last: the
+second arrives at round 3, the third at round 7, the fourth at 14, the
+fifth at 25. Most runs end around the amoeba.
+
+Clear a round that's a multiple of 100 and you gain a life. Nobody has.
 
 Speed increases with each round. There's no time limit on your inputs.
 

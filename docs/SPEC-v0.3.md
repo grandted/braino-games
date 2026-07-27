@@ -27,45 +27,82 @@ of future confusion in this codebase, so it is stated first.
 
 ## Levels — the evolution ladder
 
-Every correct input bonds one base pair. Fill the genome and the run evolves:
-new organism, new palette, new background, a longer strand to fill.
+A **level** is an organism. You reach the next one by clearing rounds, and
+each level costs more rounds than the last: +2, +4, +7, +11, +16, +22 … Those
+gaps close to `roundsCleared = k - 1 + (k-1)k(k+1)/6`, the tetrahedral
+numbers.
 
-Genome sizes are chosen so a genome completes exactly as a round is cleared.
-Clearing round N banks N(N+1)/2 base pairs, so the boundaries land on the odd
-rounds:
-
-| Tier | Organism | Genome | Completes after round |
+| Level | Organism | First played at round | Genome |
 |---|---|---|---|
-| 1 | virus | 1 | 1 |
-| 2 | bacterium | 5 | 3 |
-| 3 | amoeba | 9 | 5 |
-| 4 | sponge | 13 | 7 |
-| 5 | jellyfish | 17 | 9 |
-| 6 | fish | 21 | 11 |
-| 7 | amphibian | 25 | 13 |
-| 8 | reptile | 29 | 15 |
-| 9 | mammal | 51 | 18 |
-| 10 | human | 60 | 21 |
+| 1 | virus | 1 | 3 bp |
+| 2 | bacterium | 3 | 18 bp |
+| 3 | amoeba | 7 | 70 bp |
+| 4 | sponge | 14 | 209 bp |
+| 5 | jellyfish | 25 | 520 bp |
+| 6 | fish | 41 | 1,133 bp |
+| 7 | amphibian | 63 | 2,233 bp |
+| 8 | reptile | 92 | 4,070 bp |
+| 9 | mammal | 129 | 6,969 bp |
+| 10 | human | 175 | 11,340 bp |
 
-The ladder was spaced against what people can actually do. Arrows mode is two
-bits a symbol and most runs end somewhere between rounds 8 and 12, so the
-early tiers arrive fast and the later ones are genuinely aspirational. Clicks
-mode runs longer and pushes further up the ladder — which is fine, because
-boards are per mode and never merged.
+Calibrated against what people actually do, not against what sounds good.
+Most runs end between rounds 8 and 20, so:
 
-Past human the ladder continues procedurally (`cyborg`, `starfarer`,
-`ascendant`, then `strain N`), genome growing by a fixed step and hue rotating.
-Nobody will see it. It exists so a freak run cannot fall off the end.
+- a typical good run reaches **level 3**, the amoeba
+- a strong player reaches **level 4**
+- round 31, the ceiling documented for Simon, is **level 5**
+- round 100 is **level 8**, and is not expected to be reachable by anyone
+
+That last point is deliberate. The sequence stays append-only and unbounded,
+so round 100 means holding a 100-symbol pattern and making 5,050 correct
+inputs in one run — measured at a steady 300ms per input, just under an hour
+without a fourth mistake.
+
+Levels are meant to be rare. Under this ladder most players will see three
+organisms in a good run, and everything from the fish upward is for people
+who have genuinely drilled the game.
+
+### Genomes
+
+A level's genome is every base pair earned during the rounds that level
+spans, so the strand fills across several rounds and completes exactly as the
+level's final round is cleared. Level 3 spans rounds 7-13 and takes 70 base
+pairs; level 4 spans rounds 14-24 and takes 209.
 
 **A miss unbonds the base pairs earned in the round being replayed**, matching
 the round replay v0.1 already does. Re-clearing re-earns them, so nothing is
 permanently lost and a miss cannot farm genome progress.
 
-**Level is a function of rounds cleared.** Because genomes complete on round
-boundaries, it cannot be otherwise. Level is a milestone and a display band,
-not an independent ranking signal — which is why the server derives it rather
-than trusting the client, and rejects any submission whose level disagrees
-with its rounds.
+**Level is a function of rounds cleared** and never changes mid-round. The
+server derives it rather than trusting the client, and rejects any submission
+whose level disagrees with its rounds.
+
+---
+
+## Free lives
+
+Clearing a round that is a multiple of 100 grants a life, with no ceiling: 3
+lives become 4 at round 100, 5 at round 200, and so on.
+
+At round 100 a run has already survived 5,050 correct inputs on three lives.
+This is a reward for the mythical, not a top-up — it is entirely possible that
+no player ever triggers it, and that is the intent.
+
+---
+
+## The kill screen
+
+Past human — level 11, round 231 — the ladder stops naming animals. Organism
+names become `???`, `anomaly`, `observer`, `the pattern`, then `strain N`. The
+palette inverts and drifts, the points counter flickers, and hue stops
+following the ladder.
+
+Reaching it is not expected to be possible. It exists for the same reason NES
+Tetris has a level 29: so there is somewhere the game was not built to go, and
+a rumour about what happens there.
+
+**Deliberately absent from the README.** It is documented here because the
+owner needs to maintain it, not because players should read it.
 
 ---
 
@@ -153,12 +190,16 @@ symbol anyway.
 ## Definition of done for v0.3
 
 - [x] round/level rename across client, server, API and schema
-- [x] evolution ladder, with a procedural tail that cannot be fallen off
+- [x] evolution ladder spaced +2, +4, +7, +11 …, with a tail that cannot be
+      fallen off
+- [x] genome fills exactly across a level and never overfills mid-round
+- [x] free life every 100 rounds, no ceiling
+- [x] kill screen past the named organisms
 - [x] points per round, with the evolution bonus
 - [x] leaderboard ranks on points first; a fast shallow run can outrank a slow
       deep one
 - [x] server derives level and bounds points; both rejected when inconsistent
 - [x] old table dropped and replaced on first start
 - [x] `npm run build` and `npm run typecheck` clean (client + server)
-- [ ] Phase 1 playtested — is the tier pacing right, is the points curve right?
+- [ ] Phase 1 playtested — does the slower ladder feel right?
 - [ ] Phase 2: the 3D DNA helix

@@ -224,6 +224,10 @@ export interface GameScreen extends Screen {
   setPoints(points: number): void
   /** A genome completed: announce the new organism and change the palette. */
   evolve(level: number, organism: string): void
+  /** Past the named ladder the game stops looking like itself. */
+  setAnomaly(anomaly: boolean): void
+  /** A one-off flourish for something rare, like a free life. */
+  celebrate(): void
   setStatus(text: string, tone: StatusTone): void
   setProgress(done: number, total: number): void
   setLives(left: number, total: number): void
@@ -346,6 +350,19 @@ export function createGameScreen({
 
     setPoints(value) {
       points.textContent = value.toLocaleString()
+    },
+
+    setAnomaly(anomaly) {
+      element.classList.toggle('is-anomaly', anomaly)
+    },
+
+    celebrate() {
+      element.classList.remove('is-celebrating')
+      void element.offsetWidth
+      element.classList.add('is-celebrating')
+      window.setTimeout(() => {
+        element.classList.remove('is-celebrating')
+      }, TIMING.nextRoundDelayMs)
     },
 
     evolve(value, organism) {

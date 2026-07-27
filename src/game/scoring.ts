@@ -12,7 +12,7 @@
  */
 
 import { SCORING, basePairsAfterRound, clamp } from './modes.ts'
-import { tierFor } from './evolution.ts'
+import { levelForRounds } from './evolution.ts'
 
 /**
  * Speed multiplier for a round: 1x at the target, better when faster, bounded
@@ -54,8 +54,8 @@ export function maxPoints(rounds: number): number {
   const fromRounds =
     SCORING.pointsPerRound * basePairsAfterRound(rounds) * SCORING.speedMax
 
-  // Every tier completed strictly below the one the run ended in.
-  const tiersCompleted = tierFor(basePairsAfterRound(rounds)) - 1
+  // Every level completed strictly below the one the run ended in.
+  const tiersCompleted = levelForRounds(rounds) - 1
   let fromEvolutions = 0
   for (let tier = 1; tier <= tiersCompleted; tier += 1) {
     fromEvolutions += evolutionBonus(tier)

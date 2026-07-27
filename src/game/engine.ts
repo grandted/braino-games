@@ -26,7 +26,13 @@ import {
   type ModeId,
   type SymbolId,
 } from './modes.ts'
-import { genomeProgress, organismFor, tierFor } from './evolution.ts'
+import {
+  genomeFor,
+  genomeProgress,
+  levelForRounds,
+  organismFor,
+  type GenomeProgress,
+} from './evolution.ts'
 import { evolutionBonus, roundPoints } from './scoring.ts'
 import {
   extendSequence,
@@ -66,8 +72,10 @@ export interface RunStats {
   readonly fastestInputMs: number
   readonly totalInputs: number
   readonly runDurationMs: number
-  /** Wrong answers over the run — always `RULES.lives` on a finished run. */
+  /** Wrong answers over the run. Equals the lives it had, free ones included. */
   readonly mistakes: number
+  /** Free lives earned by clearing round milestones. Almost always zero. */
+  readonly freeLives: number
 }
 
 export type EngineEvent =
@@ -93,7 +101,8 @@ export type EngineEvent =
       /** Base pairs after the failed round's progress is unbonded. */
       basePairs: number
     }
-  | { type: 'lives'; left: number }
+  | { type: 'lives'; left: number; max: number }
+  | { type: 'freeLife'; round: number; left: number; max: number }
   | {
       type: 'roundClear'
       round: number
@@ -140,7 +149,9 @@ export class Engine {
   #clearedRounds = 0
   #points = 0
   #livesLeft = RULES.lives
+  #livesMax = RULES.lives
   #mistakes = 0
+  #freeLives = 0
 
   constructor(options: EngineOptions) {
     this.#mode = options.mode
@@ -170,6 +181,11 @@ export class Engine {
     return this.#livesLeft
   }
 
+  /** Starting lives plus any earned. Grows past `RULES.lives`. */
+  get livesMax(): number {
+    return this.#livesMax
+  }
+
   get points(): number {
     return this.#points
   }
@@ -182,9 +198,17 @@ export class Engine {
     return basePairsAfterRound(this.#clearedRounds) + this.#inputIndex
   }
 
-  /** The evolutionary tier the run currently stands in. */
+  /**
+   * The evolutionary tier the run stands in. Driven by rounds *cleared*, so
+   * it never ticks over mid-round.
+   */
   get level(): number {
-    return tierFor(this.basePairs)
+    return levelForRounds(this.#clearedRounds)
+  }
+
+  /** Which organism, and how much of its genome is bonded. */
+  get genome(): GenomeProgress {
+    return genomeProgress(this.#clearedRounds, this.basePairs)
   }
 
   /** Begin a fresh run at round 1. Safe to call from any phase. */
@@ -195,9 +219,11 @@ export class Engine {
     this.#clearedRounds = 0
     this.#points = 0
     this.#livesLeft = RULES.lives
+    this.#livesMax = RULES.lives
     this.#mistakes = 0
+    this.#freeLives = 0
     this.#runStartedAt = this.#now()
-    this.#emit({ type: 'lives', left: this.#livesLeft })
+    this.#emit({ type: 'lives', left: this.#livesLeft, max: this.#livesMax })
     this.#beginRound()
   }
 
@@ -294,11 +320,8 @@ export class Engine {
 
   #clearRound(): void {
     const round = this.round
-    // Derived from banked totals, not from live state: at this instant the
-    // round's inputs are about to move from "in progress" to "banked", and
-    // reading `this.level` across that move would count them twice.
-    const levelBefore = tierFor(basePairsAfterRound(round - 1))
-    const levelAfter = tierFor(basePairsAfterRound(round))
+    const levelBefore = levelForRounds(round - 1)
+    const levelAfter = levelForRounds(round)
 
     this.#clearedRounds = round
     this.#inputIndex = 0
@@ -325,9 +348,22 @@ export class Engine {
         type: 'evolve',
         level: tier,
         organism: organism.name,
-        genome: organism.genome,
+        genome: genomeFor(tier),
         bonus,
         totalPoints: this.#points,
+      })
+    }
+
+    // A life every hundredth round. Nobody has earned one yet.
+    if (round % RULES.freeLifeEveryRounds === 0) {
+      this.#freeLives += 1
+      this.#livesLeft += 1
+      this.#livesMax += 1
+      this.#emit({
+        type: 'freeLife',
+        round,
+        left: this.#livesLeft,
+        max: this.#livesMax,
       })
     }
 
@@ -380,7 +416,7 @@ export class Engine {
     const total = this.#reactions.length
     const sum = this.#reactions.reduce((a, b) => a + b, 0)
     const banked = basePairsAfterRound(this.#clearedRounds)
-    const progress = genomeProgress(banked)
+    const progress = genomeProgress(this.#clearedRounds, banked)
 
     return {
       mode: this.#mode.id,
@@ -394,6 +430,7 @@ export class Engine {
       totalInputs: total,
       runDurationMs: Math.round(this.#now() - this.#runStartedAt),
       mistakes: this.#mistakes,
+      freeLives: this.#freeLives,
     }
   }
 

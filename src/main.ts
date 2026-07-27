@@ -3,8 +3,7 @@ import './styles/board.css'
 import './styles/screens.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
-import { MODES, RULES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
-import { genomeProgress } from './game/evolution.ts'
+import { MODES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
 import { createLeaderboard } from './leaderboard/index.ts'
 import { createTones } from './ui/audio.ts'
 import {
@@ -15,23 +14,18 @@ import {
   type GameScreen,
   type Screen,
 } from './ui/screens.ts'
-
 function mountPoint(): HTMLElement {
   const element = document.querySelector<HTMLDivElement>('#app')
   if (!element) throw new Error('#app is missing from index.html')
   return element
 }
-
 const app = mountPoint()
 const tones = createTones()
 const leaderboard = createLeaderboard()
-
 /** For the "one and done" label: was the run just saved the session's first? */
 let runsThisSession = 0
-
 let current: Screen | null = null
 let leaveCurrent: (() => void) | null = null
-
 /** Swap screens. `onLeave` runs when this screen is replaced. */
 function show(screen: Screen, onLeave?: () => void): void {
   leaveCurrent?.()
@@ -40,9 +34,7 @@ function show(screen: Screen, onLeave?: () => void): void {
   leaveCurrent = onLeave ?? null
   app.append(screen.element)
 }
-
 let lastMode: ModeDef = MODES[0]
-
 function showMenu(): void {
   show(
     createMenuScreen({
@@ -53,7 +45,6 @@ function showMenu(): void {
     }),
   )
 }
-
 function showLeaderboard(mode: ModeDef, highlight?: string): void {
   show(
     createLeaderboardScreen({
@@ -69,7 +60,6 @@ function showLeaderboard(mode: ModeDef, highlight?: string): void {
     }),
   )
 }
-
 function showGameOver(mode: ModeDef, stats: RunStats): void {
   show(
     createGameOverScreen({
@@ -83,35 +73,29 @@ function showGameOver(mode: ModeDef, stats: RunStats): void {
     }),
   )
 }
-
 function livesLabel(count: number): string {
   return count === 1 ? '1 life' : `${count} lives`
 }
-
 function playMode(mode: ModeDef): void {
   let screen: GameScreen
   lastMode = mode
   runsThisSession += 1
-
   const engine = new Engine({ mode, emit: (event) => render(event) })
-
+  /** Push the engine's genome state at the HUD. */
+  function paintGenome(): void {
+    const { organism, bonded, genome } = engine.genome
+    screen.setEvolution(organism.tier, organism.name, bonded, genome)
+    screen.setAnomaly(organism.anomaly)
+  }
   /** The only place engine events become pixels. */
   function render(event: EngineEvent): void {
     switch (event.type) {
-      case 'round': {
+      case 'round':
         screen.setRound(event.round)
         screen.setProgress(0, event.sequence.length)
-        const progress = genomeProgress(engine.basePairs)
-        screen.setEvolution(
-          progress.organism.tier,
-          progress.organism.name,
-          progress.bonded,
-          progress.genome,
-        )
+        paintGenome()
         screen.board.clear()
         break
-      }
-
       case 'phase':
         screen.board.setLocked(event.phase === 'playback')
         if (event.phase === 'playback') screen.setStatus('watch', 'watch')
@@ -119,35 +103,24 @@ function playMode(mode: ModeDef): void {
         else if (event.phase === 'paused')
           screen.setStatus('focus lost — replaying', 'paused')
         break
-
       case 'flashOn':
         screen.board.flash(event.symbol, event.durationMs)
         // The tone is held for exactly the flash — sound and motion together
         // are what make the sequence stick.
         tones.play(getSymbol(mode, event.symbol), event.durationMs)
         break
-
-      case 'accept': {
+      case 'accept':
         screen.board.pressed(event.symbol)
         tones.play(getSymbol(mode, event.symbol), TIMING.inputFlashMs)
         screen.setProgress(event.index + 1, engine.sequence.length)
         // One correct input bonds one base pair of the current genome.
-        const bonded = genomeProgress(event.basePairs)
-        screen.setEvolution(
-          bonded.organism.tier,
-          bonded.organism.name,
-          bonded.bonded,
-          bonded.genome,
-        )
+        paintGenome()
         break
-      }
-
       case 'roundClear':
         screen.setStatus(`clear · +${event.points.toLocaleString()}`, 'good')
         screen.setPoints(event.totalPoints)
         tones.roundClear()
         break
-
       case 'evolve':
         // The Tetris moment: a genome completed, so the run changes species.
         screen.setStatus(`evolved · ${event.organism}`, 'good')
@@ -155,11 +128,16 @@ function playMode(mode: ModeDef): void {
         screen.evolve(event.level, event.organism)
         tones.evolve()
         break
-
       case 'lives':
-        screen.setLives(event.left, RULES.lives)
+        screen.setLives(event.left, event.max)
         break
-
+      case 'freeLife':
+        // Round 100. Nobody has seen this happen.
+        screen.setLives(event.left, event.max)
+        screen.setStatus(`round ${event.round} · free life`, 'good')
+        screen.celebrate()
+        tones.evolve()
+        break
       case 'reject': {
         const expected = getSymbol(mode, event.expected).name
         screen.setStatus(
@@ -168,58 +146,44 @@ function playMode(mode: ModeDef): void {
             : `it was ${expected} — ${livesLabel(event.livesLeft)} left`,
           'bad',
         )
-        screen.setLives(event.livesLeft, RULES.lives)
-        const unbonded = genomeProgress(event.basePairs)
-        screen.setEvolution(
-          unbonded.organism.tier,
-          unbonded.organism.name,
-          unbonded.bonded,
-          unbonded.genome,
-        )
+        screen.setLives(event.livesLeft, engine.livesMax)
+        // The failed round's pairs just unbonded.
+        paintGenome()
         screen.board.showMiss(event.expected, event.received)
         screen.shake()
         tones.miss()
         break
       }
-
       case 'gameOver':
         showGameOver(mode, event.stats)
         break
-
       // flashOff and playbackEnd need no rendering — pads unlight themselves
       // when their flash duration elapses.
       default:
         break
     }
   }
-
   // Losing focus mid-playback would be an unfair miss, so the engine pauses
   // and replays the level when focus comes back.
   const onBlur = (): void => engine.handleBlur()
   const onFocus = (): void => engine.handleFocus()
   window.addEventListener('blur', onBlur)
   window.addEventListener('focus', onFocus)
-
   // We're inside the click or keypress that picked the mode, which is the
   // only moment a browser will let an AudioContext start.
   tones.resume()
-
   screen = createGameScreen({
     mode,
     tones,
     onInput: (symbol) => engine.press(symbol),
     onExit: showMenu,
   })
-
   screen.setPoints(0)
-
   show(screen, () => {
     engine.stop()
     window.removeEventListener('blur', onBlur)
     window.removeEventListener('focus', onFocus)
   })
-
   engine.start()
 }
-
 showMenu()

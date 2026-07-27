@@ -145,8 +145,14 @@ export function symbolForButton(
  */
 
 export const RULES = {
-  /** Wrong answers a run survives. The fourth ends it. */
+  /** Wrong answers a run starts with. The next one ends it. */
   lives: 3,
+  /**
+   * Clear a round that is a multiple of this and the run gains a life, with
+   * no ceiling. At round 100 — the first one — a run has already survived
+   * 5,050 correct inputs, so this is a reward for the mythical, not a top-up.
+   */
+  freeLifeEveryRounds: 100,
 } as const
 
 /* Timing ------------------------------------------------------------------

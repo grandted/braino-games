@@ -18,7 +18,7 @@ import {
   gapMsForRound,
   type ModeId,
 } from '../src/game/modes.ts'
-import { tierFor } from '../src/game/evolution.ts'
+import { levelForRounds } from '../src/game/evolution.ts'
 import { maxPoints } from '../src/game/scoring.ts'
 import {
   NICKNAME_MAX,
@@ -69,11 +69,11 @@ export function validateDraft(body: unknown): Validation {
     return fail(`${rounds} rounds needs at least ${minInputs} inputs`)
   }
 
-  // Level is derived, not reported: genomes complete on round boundaries, so
-  // the server knows exactly which tier a given number of rounds reaches. A
-  // mismatch means the client is out of date or the payload was hand-made.
+  // Level is derived, not reported: it is a function of rounds cleared, so
+  // the server knows exactly which tier a run reached. A mismatch means the
+  // client is out of date or the payload was hand-made.
   const level = raw.level
-  const expectedLevel = tierFor(minInputs)
+  const expectedLevel = levelForRounds(rounds)
   if (!isCount(level) || level !== expectedLevel) {
     return fail(`level for ${rounds} rounds must be ${expectedLevel}`)
   }
