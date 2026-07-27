@@ -2,8 +2,8 @@
 
 ## Concept
 
-Watch a sequence. Repeat it. It grows by one every level. Miss once and
-the round ends.
+Watch a sequence. Repeat it. It grows by one every level. A miss costs a
+life; three misses and the round ends.
 
 Level 1 is one input. Level 7 is seven. There is no upper bound — the
 game ends when you do.
@@ -27,10 +27,12 @@ mode and never merged**. Don't "fix" this by averaging them.
 
 ```
 menu → [pick mode] → playback → input → result
-                        ↑                  │
-                        └──── correct ─────┤
+                       ↑ ↑                 │
+                       │ └──── correct ────┤
+                       │                   │
+                       └── life left ── wrong
                                            │
-                                        wrong → gameover → retry
+                                    out of lives → gameover → retry
 ```
 
 1. **Playback** — symbols flash one at a time, each with its own tone.
@@ -39,7 +41,20 @@ menu → [pick mode] → playback → input → result
    immediate feedback (flash + tone). No confirmation step.
 3. **Result** — correct: brief success cue, next level starts in ~600ms
    with the same sequence plus one new symbol appended. Wrong: fail cue,
-   gameover screen.
+   one life spent, and the *same* level replays from playback. On the
+   third miss the run ends and the gameover screen appears.
+
+## Lives
+
+A run has three. They do not regenerate — clearing levels does not buy
+them back, so a run is bounded by three mistakes however long it lasts.
+
+The replayed level keeps its sequence. Regenerating it after a miss
+would hand the player a fresh string to memorise instead of another go
+at the pattern they just lost, which is the opposite of drilling.
+
+Lives are a run-level counter and never enter the leaderboard entry —
+the score is still level reached, tiebroken on reaction time.
 
 **The sequence is append-only.** Level 4 is level 3's sequence plus one.
 This is what makes it trainable — regenerating from scratch each level

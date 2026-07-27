@@ -3,7 +3,7 @@ import './styles/board.css'
 import './styles/screens.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
-import { getSymbol, type ModeDef } from './game/modes.ts'
+import { RULES, getSymbol, type ModeDef } from './game/modes.ts'
 import {
   createGameOverScreen,
   createGameScreen,
@@ -47,6 +47,10 @@ function showGameOver(mode: ModeDef, stats: RunStats): void {
   )
 }
 
+function livesLabel(count: number): string {
+  return count === 1 ? '1 life' : `${count} lives`
+}
+
 function playMode(mode: ModeDef): void {
   let screen: GameScreen
 
@@ -82,11 +86,23 @@ function playMode(mode: ModeDef): void {
         screen.setStatus('clear', 'good')
         break
 
-      case 'reject':
-        screen.setStatus(`it was ${getSymbol(mode, event.expected).name}`, 'bad')
+      case 'lives':
+        screen.setLives(event.left, RULES.lives)
+        break
+
+      case 'reject': {
+        const expected = getSymbol(mode, event.expected).name
+        screen.setStatus(
+          event.livesLeft === 0
+            ? `it was ${expected} — out`
+            : `it was ${expected} — ${livesLabel(event.livesLeft)} left`,
+          'bad',
+        )
+        screen.setLives(event.livesLeft, RULES.lives)
         screen.board.showMiss(event.expected, event.received)
         screen.shake()
         break
+      }
 
       case 'gameOver':
         showGameOver(mode, event.stats)

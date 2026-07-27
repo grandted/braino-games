@@ -140,6 +140,15 @@ export function symbolForButton(
   return mode.symbols.find((s) => s.mouseButton === button) ?? null
 }
 
+/* Rules -------------------------------------------------------------------
+ * Tunables that aren't timing. Same principle: one place, never inlined.
+ */
+
+export const RULES = {
+  /** Wrong answers a run survives. The fourth ends it. */
+  lives: 3,
+} as const
+
 /* Timing ------------------------------------------------------------------
  * Every duration in the game lives here — never inline one at a call site.
  */

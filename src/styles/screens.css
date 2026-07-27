@@ -95,6 +95,25 @@
   line-height: 1;
 }
 
+.lives {
+  display: flex;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--danger);
+}
+
+.lives__pip {
+  transition:
+    color 200ms ease,
+    transform 200ms ease;
+}
+
+.lives__pip.is-spent {
+  color: var(--line-bright);
+  transform: scale(0.72);
+}
+
 .hud__status {
   font: 700 13px/1 var(--mono);
   letter-spacing: 0.2em;

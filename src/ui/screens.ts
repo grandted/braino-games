@@ -111,6 +111,7 @@ export interface GameScreen extends Screen {
   setLevel(level: number): void
   setStatus(text: string, tone: StatusTone): void
   setProgress(done: number, total: number): void
+  setLives(left: number, total: number): void
   shake(): void
 }
 
@@ -143,7 +144,10 @@ export function createGameScreen({
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
 
-  header.append(modeTag, level, status)
+  const lives = document.createElement('p')
+  lives.className = 'lives'
+
+  header.append(modeTag, level, lives, status)
 
   const progress = document.createElement('div')
   progress.className = 'progress'
@@ -196,6 +200,20 @@ export function createGameScreen({
       }
     },
 
+    setLives(left, total) {
+      lives.replaceChildren()
+      lives.setAttribute(
+        'aria-label',
+        `${left} of ${total} ${total === 1 ? 'life' : 'lives'} left`,
+      )
+      for (let i = 0; i < total; i += 1) {
+        const pip = document.createElement('span')
+        pip.className = i < left ? 'lives__pip' : 'lives__pip is-spent'
+        pip.textContent = '●'
+        lives.append(pip)
+      }
+    },
+
     shake() {
       element.classList.remove('is-shaking')
       void element.offsetWidth
@@ -233,7 +251,7 @@ export function createGameOverScreen({
 
   const heading = document.createElement('h2')
   heading.className = 'over__heading'
-  heading.textContent = stats.level === 0 ? 'Missed it' : 'Run over'
+  heading.textContent = stats.level === 0 ? 'Out of lives' : 'Run over'
 
   const score = document.createElement('p')
   score.className = 'over__score'
@@ -321,6 +339,7 @@ function statRows(stats: RunStats): ReadonlyArray<readonly [string, string]> {
     ['Avg reaction', `${stats.avgReactionMs} ms`],
     ['Fastest', `${stats.fastestInputMs} ms`],
     ['Inputs', String(stats.totalInputs)],
+    ['Misses', String(stats.mistakes)],
     ['Run time', `${(stats.runDurationMs / 1000).toFixed(1)} s`],
   ]
 }

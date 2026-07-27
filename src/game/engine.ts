@@ -11,6 +11,7 @@
  */
 
 import {
+  RULES,
   TIMING,
   flashMsForLevel,
   gapMsForLevel,
@@ -48,6 +49,8 @@ export interface RunStats {
   readonly fastestInputMs: number
   readonly totalInputs: number
   readonly runDurationMs: number
+  /** Wrong answers over the run — always `RULES.lives` on a finished run. */
+  readonly mistakes: number
 }
 
 export type EngineEvent =
@@ -57,7 +60,14 @@ export type EngineEvent =
   | { type: 'flashOff'; symbol: SymbolId; index: number }
   | { type: 'playbackEnd' }
   | { type: 'accept'; symbol: SymbolId; index: number; reactionMs: number }
-  | { type: 'reject'; expected: SymbolId; received: SymbolId }
+  | {
+      type: 'reject'
+      expected: SymbolId
+      received: SymbolId
+      /** Lives left after paying for this miss. Zero means the run is over. */
+      livesLeft: number
+    }
+  | { type: 'lives'; left: number }
   | { type: 'levelClear'; level: number }
   | { type: 'gameOver'; stats: RunStats }
 
@@ -86,6 +96,8 @@ export class Engine {
   #lastInputAt = 0
   #runStartedAt = 0
   #clearedLevels = 0
+  #livesLeft = RULES.lives
+  #mistakes = 0
 
   constructor(options: EngineOptions) {
     this.#mode = options.mode
@@ -111,13 +123,20 @@ export class Engine {
     return this.#sequence
   }
 
+  get livesLeft(): number {
+    return this.#livesLeft
+  }
+
   /** Begin a fresh run at level 1. Safe to call from any phase. */
   start(): void {
     this.#cancelTimers()
     this.#sequence = startSequence(this.#mode, this.#random)
     this.#reactions = []
     this.#clearedLevels = 0
+    this.#livesLeft = RULES.lives
+    this.#mistakes = 0
     this.#runStartedAt = this.#now()
+    this.#emit({ type: 'lives', left: this.#livesLeft })
     this.#beginLevel()
   }
 
@@ -131,7 +150,7 @@ export class Engine {
 
     const index = this.#inputIndex
     if (!isCorrectAt(this.#sequence, index, symbol)) {
-      this.#fail(this.#sequence[index], symbol)
+      this.#miss(this.#sequence[index], symbol)
       return
     }
 
@@ -214,9 +233,22 @@ export class Engine {
     })
   }
 
-  #fail(expected: SymbolId, received: SymbolId): void {
+  /**
+   * A wrong answer costs a life. While lives remain the *same* level replays
+   * from the top — the sequence is never regenerated, or the player would be
+   * re-memorising instead of drilling the pattern they just lost.
+   */
+  #miss(expected: SymbolId, received: SymbolId): void {
+    this.#mistakes += 1
+    this.#livesLeft -= 1
     this.#setPhase('result')
-    this.#emit({ type: 'reject', expected, received })
+    this.#emit({ type: 'reject', expected, received, livesLeft: this.#livesLeft })
+
+    if (this.#livesLeft > 0) {
+      this.#after(TIMING.failCueMs, () => this.#beginLevel())
+      return
+    }
+
     const stats = this.#buildStats()
     this.#after(TIMING.failCueMs, () => {
       this.#setPhase('gameover')
@@ -234,6 +266,7 @@ export class Engine {
       fastestInputMs: total === 0 ? 0 : Math.round(Math.min(...this.#reactions)),
       totalInputs: total,
       runDurationMs: Math.round(this.#now() - this.#runStartedAt),
+      mistakes: this.#mistakes,
     }
   }
 
