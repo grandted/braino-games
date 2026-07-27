@@ -71,9 +71,18 @@
 }
 
 .screen--game {
-  gap: 18px;
+  /* Distributes the stack down the screen rather than bunching it in the
+     middle. The clamp keeps it tight where there is no room to give. */
+  gap: clamp(12px, 3.2vh, 44px);
+  padding-block: clamp(4px, 2vh, 28px);
   --level-hue: 285;
   position: relative;
+}
+
+/* On a tall screen the strand takes the slack, so the HUD stays up top and
+   the pads stay in reach instead of everything crowding the centre. */
+.screen--game .helix {
+  margin-block: clamp(0px, 1.6vh, 26px);
 }
 
 /* Each organism tints the backdrop. It shifts on evolution, the way Tetris
@@ -84,18 +93,42 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 90% 55% at 50% 42%,
-    hsl(var(--level-hue) 70% 55% / 0.16),
-    transparent 72%
-  );
-  transition: background 900ms ease;
+  /* Two soft washes rather than one blob: enough for the eye to register a
+     new organism, far too faint to compete with the pads. */
+  background:
+    radial-gradient(
+      ellipse 120% 65% at 50% 0%,
+      hsl(var(--level-hue) 68% 52% / 0.13),
+      transparent 62%
+    ),
+    radial-gradient(
+      ellipse 100% 55% at 50% 100%,
+      hsl(var(--level-hue) 72% 44% / 0.09),
+      transparent 68%
+    );
+  /* Slow enough to read as the room changing colour, not as a flash. */
+  transition: background 1100ms ease;
+}
+
+/* Evolution: the wash blooms once, then settles back to barely-there. */
+.screen--game.is-evolving::before {
+  animation: level-bloom 900ms ease-out;
+}
+
+@keyframes level-bloom {
+  0%,
+  100% {
+    filter: none;
+  }
+  28% {
+    filter: brightness(2.6) saturate(1.6);
+  }
 }
 
 .screen--game.is-anomaly::before {
   background: radial-gradient(
     ellipse 90% 55% at 50% 42%,
-    hsl(0 0% 60% / 0.2),
+    hsl(0 0% 60% / 0.16),
     transparent 72%
   );
 }
@@ -104,7 +137,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: clamp(5px, 1.1vh, 12px);
 }
 
 .hud__mode {
@@ -275,7 +308,8 @@
 @media (prefers-reduced-motion: reduce) {
   .screen--game.is-anomaly,
   .screen--game.is-anomaly .hud__points,
-  .screen--game.is-celebrating .lives {
+  .screen--game.is-celebrating .lives,
+  .screen--game.is-evolving::before {
     animation: none;
   }
 
@@ -723,7 +757,8 @@
 
   .screen--game {
     justify-content: flex-start;
-    gap: 12px;
+    gap: clamp(10px, 1.8vh, 20px);
+    padding-block: 0;
     min-height: calc(100svh - 28px);
   }
 

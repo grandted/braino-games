@@ -391,7 +391,11 @@ export function createGameScreen({
     evolve(value, organism) {
       // The organism the run just *became* is the one after the genome that
       // completed, which setEvolution paints on the next round event.
-      banner.textContent = `${organism} → ${organismFor(value + 1).name}`
+      const next = organismFor(value + 1)
+      banner.textContent = `${organism} → ${next.name}`
+      // Start the backdrop moving now rather than waiting for the next round,
+      // so the colour change and the bloom are one moment instead of two.
+      element.style.setProperty('--level-hue', String(next.hue))
       helix.evolve()
       element.classList.remove('is-evolving')
       void element.offsetWidth

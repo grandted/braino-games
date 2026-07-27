@@ -13,15 +13,20 @@
   --helix-hue: 285;
   /* How many rungs fit. Read once per rebuild by ui/helix.ts. */
   --helix-rungs: 40;
-  --helix-spin: 4s;
+  --helix-spin: 3.6s;
   /* Phase offset between neighbours — this is what makes it a helix. */
   --helix-stagger: -0.1s;
-  --helix-height: 62px;
+  --helix-height: 86px;
+  /* How far the whole strand swings while it orbits. */
+  --helix-orbit: 15s;
 
   width: 100%;
   max-width: 620px;
-  height: calc(var(--helix-height) + 18px);
-  perspective: 620px;
+  height: calc(var(--helix-height) + 26px);
+  /* Short perspective = strong foreshortening. This is most of what makes the
+     near node read as genuinely closer rather than just bigger. */
+  perspective: 420px;
+  perspective-origin: 50% 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -44,12 +49,43 @@
 }
 
 .helix__strand {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: clamp(2px, 0.7vw, 7px);
   width: 100%;
   transform-style: preserve-3d;
+  /* Seen from an angle and slowly turning in space, rather than side-on and
+     flat. The tilt is what makes the helix read as a solid object. */
+  animation: helix-orbit var(--helix-orbit) ease-in-out infinite alternate;
+}
+
+@keyframes helix-orbit {
+  from {
+    transform: rotateY(-17deg) rotateX(11deg);
+  }
+  to {
+    transform: rotateY(17deg) rotateX(-5deg);
+  }
+}
+
+/* The axis the strand coils around. Faint, but it anchors the perspective. */
+.helix__strand::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    hsl(var(--helix-hue) 60% 60% / 0.28),
+    transparent
+  );
+  transform: translateZ(-1px);
+  pointer-events: none;
 }
 
 .helix__rung {
@@ -81,8 +117,8 @@
 .helix__bar {
   position: absolute;
   left: 50%;
-  top: 8px;
-  bottom: 8px;
+  top: 6px;
+  bottom: 6px;
   width: 2px;
   margin-left: -1px;
   border-radius: 1px;
@@ -94,15 +130,21 @@
 }
 
 /* The two backbone nodes, one at each end of the bar. Rotation carries them
-   through depth, so one is always nearer the viewer than the other. */
+   through depth, so one is always nearer the viewer than the other.
+   Lit off-centre so they read as spheres rather than as flat discs. */
 .helix__node {
   position: absolute;
   left: 50%;
-  width: 9px;
-  height: 9px;
-  margin-left: -4.5px;
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
   border-radius: 50%;
-  background: var(--line-bright);
+  background: radial-gradient(
+    circle at 34% 30%,
+    hsl(0 0% 62%),
+    hsl(0 0% 38%) 58%,
+    hsl(0 0% 26%)
+  );
   transition:
     background 200ms ease,
     box-shadow 200ms ease,
@@ -124,16 +166,26 @@
 }
 
 .helix__rung.is-bonded .helix__node {
-  background: hsl(var(--helix-hue) 85% 64%);
+  background: radial-gradient(
+    circle at 34% 30%,
+    hsl(var(--helix-hue) 95% 84%),
+    hsl(var(--helix-hue) 88% 58%) 56%,
+    hsl(var(--helix-hue) 85% 36%)
+  );
   box-shadow:
-    0 0 10px hsl(var(--helix-hue) 90% 60% / 0.75),
-    0 0 22px hsl(var(--helix-hue) 90% 55% / 0.35);
+    0 0 12px hsl(var(--helix-hue) 90% 60% / 0.8),
+    0 0 26px hsl(var(--helix-hue) 90% 55% / 0.4);
 }
 
 /* The newest bond flashes in the colour of the symbol that made it. Only ever
    applied to a rung that is already bonded — see the note in ui/helix.ts. */
 .helix__rung.is-fresh .helix__node {
-  background: var(--flash, hsl(var(--helix-hue) 85% 64%));
+  background: radial-gradient(
+    circle at 34% 30%,
+    #fff,
+    var(--flash, hsl(var(--helix-hue) 88% 58%)) 52%,
+    var(--flash, hsl(var(--helix-hue) 85% 40%))
+  );
   box-shadow:
     0 0 16px var(--flash, hsl(var(--helix-hue) 90% 60%)),
     0 0 34px var(--flash, hsl(var(--helix-hue) 90% 55%));
@@ -190,27 +242,31 @@
 @media (pointer: coarse) {
   .helix {
     --helix-rungs: 24;
-    --helix-height: 48px;
+    --helix-height: 62px;
+    /* Fewer rungs, so each must turn further to still trace a whole coil. */
+    --helix-stagger: -0.16s;
+    perspective: 320px;
     max-width: 92vw;
   }
 
   .helix__node {
-    width: 8px;
-    height: 8px;
-    margin-left: -4px;
+    width: 11px;
+    height: 11px;
+    margin-left: -5.5px;
   }
 }
 
 @media (max-width: 420px) {
   .helix {
     --helix-rungs: 18;
+    --helix-stagger: -0.2s;
   }
 }
 
 /* Landscape phones have no vertical room to spare. */
 @media (pointer: coarse) and (max-height: 460px) {
   .helix {
-    --helix-height: 34px;
+    --helix-height: 40px;
     --helix-rungs: 20;
   }
 }
@@ -226,6 +282,13 @@
   .helix.is-live .helix__rung,
   .helix.is-evolving .helix__rung {
     animation: none;
+  }
+
+  /* Frozen, but still a helix seen from an angle — the shape survives, and
+     the information it carries was always colour rather than motion. */
+  .helix__strand {
+    animation: none;
+    transform: rotateY(-14deg) rotateX(9deg);
   }
 
   .helix__rung {

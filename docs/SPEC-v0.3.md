@@ -194,6 +194,19 @@ Colour comes from the organism's hue, which also tints the screen backdrop and
 shifts on evolution the way Tetris changes colour every tenth line. Completing
 a genome runs a wave of light along the strand.
 
+**The backdrop is two very faint washes**, not a block of colour — enough for
+the eye to register a new organism, far too weak to compete with the pads. It
+crossfades over about a second and blooms once at the moment of evolution, so
+the change is felt rather than merely present. Ladder hues are spaced widest
+between the low levels, because those are the ones players actually reach and a
+30° step is invisible at that opacity; the gaps tighten higher up as the run
+drifts from cold sea life to warm land animals.
+
+**Vertical rhythm scales with the viewport.** Gaps are `clamp()`ed against
+`vh`, so the stack is tight on a laptop and airy on a tall screen, with the
+strand taking up the slack — the HUD stays at the top and the pads stay in
+reach rather than everything crowding the centre.
+
 **Anti-spoiler rule**: only a rung that is already bonded ever takes a symbol
 colour — the newest bond flashes in the colour of the input that made it. An
 unbonded rung showing its symbol would be a cheat sheet directly above the

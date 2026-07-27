@@ -33,17 +33,23 @@ export interface Organism {
   readonly anomaly: boolean
 }
 
+/**
+ * Hues are spaced widest at the bottom of the ladder, because those are the
+ * transitions people actually reach — the backdrop wash is deliberately faint,
+ * and a 30° step would be invisible at that opacity. The gaps tighten higher
+ * up, where the run also drifts from cold sea life toward warm land animals.
+ */
 const LADDER: readonly { name: string; hue: number }[] = [
-  { name: 'virus', hue: 285 },
-  { name: 'bacterium', hue: 255 },
-  { name: 'amoeba', hue: 210 },
-  { name: 'sponge', hue: 175 },
-  { name: 'jellyfish', hue: 315 },
-  { name: 'fish', hue: 195 },
-  { name: 'amphibian', hue: 130 },
-  { name: 'reptile', hue: 95 },
-  { name: 'mammal', hue: 35 },
-  { name: 'human', hue: 15 },
+  { name: 'virus', hue: 285 }, // violet
+  { name: 'bacterium', hue: 190 }, // cyan
+  { name: 'amoeba', hue: 130 }, // green
+  { name: 'sponge', hue: 35 }, // amber
+  { name: 'jellyfish', hue: 320 }, // magenta
+  { name: 'fish', hue: 205 }, // blue
+  { name: 'amphibian', hue: 95 }, // yellow-green
+  { name: 'reptile', hue: 60 }, // yellow
+  { name: 'mammal', hue: 25 }, // orange
+  { name: 'human', hue: 0 }, // red
 ]
 
 /**
@@ -97,8 +103,9 @@ export function organismFor(level: number): Organism {
   return {
     tier,
     name: ANOMALIES[past] ?? `strain ${tier}`,
-    // Hue drifts unpredictably out here rather than following the ladder.
-    hue: (past * 97) % 360,
+    // Hue leaves the ladder entirely out here. Offset so the first anomaly
+    // doesn't land on human's red and read as "nothing changed".
+    hue: (160 + past * 97) % 360,
     anomaly: true,
   }
 }
