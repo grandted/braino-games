@@ -500,6 +500,86 @@
   }
 }
 
+/* Touch layout ------------------------------------------------------------
+ * Phone play: HUD at the top, pads pushed to the bottom where the thumbs are,
+ * everything else compressed so a round never needs scrolling.
+ */
+
+@media (pointer: coarse) {
+  #app {
+    padding: 14px;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  .screen {
+    gap: 18px;
+  }
+
+  .screen--game {
+    justify-content: flex-start;
+    gap: 12px;
+    min-height: calc(100svh - 28px);
+  }
+
+  .screen--game .board {
+    /* Sink the pads to the bottom of the screen. */
+    margin-top: auto;
+  }
+
+  .screen--game .hud__level {
+    font-size: clamp(28px, 8vw, 40px);
+  }
+
+  .screen--game .controls {
+    order: 5;
+  }
+
+  .screen--game > .hint {
+    order: 6;
+    margin-top: 2px;
+  }
+
+  /* Comfortable tap targets everywhere, not just on the pads. */
+  .btn,
+  .tab,
+  .mode-card {
+    min-height: 46px;
+  }
+
+  .mode-card {
+    padding: 16px 18px;
+  }
+
+  .wordmark {
+    font-size: clamp(44px, 16vw, 72px);
+  }
+
+  .entry {
+    padding: 12px;
+  }
+}
+
+/* Landscape phones: almost no vertical room, so lose the decoration. */
+@media (pointer: coarse) and (max-height: 460px) {
+  .screen--game .hud__mode,
+  .screen--game > .hint {
+    display: none;
+  }
+
+  .screen--game .hud__level {
+    font-size: 24px;
+  }
+
+  .board--split .pad {
+    aspect-ratio: 16 / 9;
+    max-height: 34svh;
+  }
+
+  .board--cluster .pad {
+    aspect-ratio: 2 / 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /* Screen shake swaps for a flat opacity dip. */
   .is-shaking {

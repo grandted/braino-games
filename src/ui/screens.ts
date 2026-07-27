@@ -33,6 +33,27 @@ export interface Screen {
 }
 
 /**
+ * A hint line that says the right thing on the right device. Telling a phone
+ * player to press escape is worse than saying nothing; CSS picks the variant
+ * from `(pointer: coarse)` so there's no device sniffing involved.
+ */
+function createHint(keysHtml: string, touchText: string): HTMLParagraphElement {
+  const hint = document.createElement('p')
+  hint.className = 'hint'
+
+  const forKeys = document.createElement('span')
+  forKeys.className = 'on-keys'
+  forKeys.innerHTML = keysHtml
+
+  const forTouch = document.createElement('span')
+  forTouch.className = 'on-touch'
+  forTouch.textContent = touchText
+
+  hint.append(forKeys, forTouch)
+  return hint
+}
+
+/**
  * Mute toggle. Every screen carries one so the shortcut works wherever the
  * player is, and the state it shows comes straight from `tones`.
  */
@@ -128,11 +149,11 @@ export function createMenuScreen({
     return button
   })
 
-  const hint = document.createElement('p')
-  hint.className = 'hint'
-  hint.innerHTML =
-    'Move with <kbd>↑</kbd><kbd>↓</kbd>, pick with <kbd>enter</kbd> — or just click. ' +
-    'Three lives a run. <kbd>m</kbd> mutes.'
+  const hint = createHint(
+    'Move with <kbd>↑</kbd><kbd>↓</kbd>, pick with <kbd>enter</kbd> — or just ' +
+      'click. Three lives a run. <kbd>m</kbd> mutes.',
+    'Tap a mode to start. Three lives a run.',
+  )
 
   const mute = createMuteButton(tones)
 
@@ -241,9 +262,10 @@ export function createGameScreen({
   // slightly off a pad in clicks mode should still count.
   const board = createBoard({ mode, onInput, surface: element })
 
-  const footer = document.createElement('footer')
-  footer.className = 'hint'
-  footer.innerHTML = 'Give up with <kbd>esc</kbd> · mute with <kbd>m</kbd>'
+  const footer = createHint(
+    'Give up with <kbd>esc</kbd> · mute with <kbd>m</kbd>',
+    'Tap the pads to answer.',
+  )
 
   const quit = document.createElement('button')
   quit.type = 'button'
@@ -395,10 +417,10 @@ export function createGameOverScreen({
   actions.className = 'over__actions'
   actions.append(retry, menu, boardButton, mute.element)
 
-  const hint = document.createElement('p')
-  hint.className = 'hint'
-  hint.innerHTML =
-    'Any key or click to retry · <kbd>esc</kbd> for the menu · <kbd>m</kbd> mutes'
+  const hint = createHint(
+    'Any key or click to retry · <kbd>esc</kbd> for the menu · <kbd>m</kbd> mutes',
+    'Tap anywhere to play again.',
+  )
 
   element.append(heading, score, modeTag, statList)
   // A run that cleared nothing has nothing to submit.
@@ -514,7 +536,7 @@ export function createGameOverScreen({
     else onRetry()
   }
 
-  function onMouseDown(event: MouseEvent): void {
+  function onPointerDown(event: PointerEvent): void {
     const target = event.target as HTMLElement | null
     // Controls fire their own click handlers; letting the fallback run here
     // too would retry twice off one press.
@@ -528,7 +550,7 @@ export function createGameOverScreen({
   }
 
   window.addEventListener('keydown', onKeyDown)
-  element.addEventListener('mousedown', onMouseDown)
+  element.addEventListener('pointerdown', onPointerDown)
   element.addEventListener('contextmenu', onContextMenu)
   queueMicrotask(() => retry.focus())
 
@@ -536,7 +558,7 @@ export function createGameOverScreen({
     element,
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
-      element.removeEventListener('mousedown', onMouseDown)
+      element.removeEventListener('pointerdown', onPointerDown)
       element.removeEventListener('contextmenu', onContextMenu)
       mute.destroy()
       element.remove()
@@ -632,10 +654,10 @@ export function createLeaderboardScreen({
   controls.className = 'controls'
   controls.append(back, mute.element)
 
-  const hint = document.createElement('p')
-  hint.className = 'hint'
-  hint.innerHTML =
-    '<kbd>←</kbd><kbd>→</kbd> mode · <kbd>↑</kbd><kbd>↓</kbd> period · <kbd>esc</kbd> back'
+  const hint = createHint(
+    '<kbd>←</kbd><kbd>→</kbd> mode · <kbd>↑</kbd><kbd>↓</kbd> period · <kbd>esc</kbd> back',
+    'Tap a mode or a period to switch.',
+  )
 
   element.append(title, note, tabs, windows, list, controls, hint)
 

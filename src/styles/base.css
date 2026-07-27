@@ -58,13 +58,36 @@ body {
     ),
     var(--bg);
   overflow-x: hidden;
+  /* Mid-round, a pull-to-refresh or a double-tap zoom is a lost round.
+     Pinch zoom is left alone — that one is an accessibility affordance. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #app {
+  /* svh, not dvh: the small viewport is the one that's always visible, so the
+     pads don't jump when mobile browser chrome slides away mid-round. */
   min-height: 100svh;
   display: grid;
   place-items: center;
   padding: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+/* Device-appropriate hint text — see createHint() in ui/screens.ts. */
+.on-touch {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .on-keys {
+    display: none;
+  }
+
+  .on-touch {
+    display: inline;
+  }
 }
 
 h1,

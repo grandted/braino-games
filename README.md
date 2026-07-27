@@ -9,10 +9,22 @@ it grow.
 
 ```bash
 npm install
-npm run dev
+npm run dev         # the game, port 5173
+npm run dev:server  # the leaderboard, port 8787
 ```
 
-Open <http://localhost:5173>, hit play, pick a mode.
+Open <http://localhost:5173> and pick a mode. Both processes are wanted
+in development — the game proxies `/api` to the leaderboard server.
+
+To run it the way it ships, as one process on one port:
+
+```bash
+npm start           # builds, then serves the game and the API on 8787
+```
+
+Works on a phone: the pads become virtual arrow keys or virtual mouse
+buttons depending on the mode you pick. To play on one over your local
+network, run `npm run dev -- --host` and use the printed address.
 
 ## Modes
 
@@ -38,19 +50,30 @@ Scores are ranked by level reached, then by average reaction time. The
 board is per mode and never merged — a level-10 clicks run is not a
 level-10 arrows run.
 
+## Leaderboard
+
+Global, and per mode. Sliceable by last 24 hours, last week, last month
+or all time, so the board isn't just a wall of records nobody can reach.
+
+Scores live on the server — there is no local board, so no network means
+no leaderboard. Submissions get light sanity checks (a run whose numbers
+contradict each other is refused), but this is not anti-cheat and isn't
+trying to be.
+
 ## Status
 
-**v0.1** — playable, local leaderboard only.
+**v0.2** — global leaderboard, mobile play.
 
 Roadmap:
-- v0.2 — global leaderboard
 - v0.3 — additional modes (WASD, numpad, mixed)
 
 ## Docs
 
 - [`docs/SPEC.md`](docs/SPEC.md) — game rules, timing, scope
+- [`docs/SPEC-v0.2.md`](docs/SPEC-v0.2.md) — global leaderboard, mobile
 - [`CLAUDE.md`](CLAUDE.md) — context for Claude Code
 
 ## Stack
 
-Vite, TypeScript, no framework, no runtime dependencies.
+Vite and TypeScript on the client, `node:http` and `node:sqlite` on the
+server. No framework, no runtime dependencies at either end.

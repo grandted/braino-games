@@ -6,7 +6,10 @@
  *   - arrow keys are preventDefault'd (otherwise the page scrolls)
  *   - contextmenu is preventDefault'd over the play area
  *   - `event.repeat` keydowns are ignored (key held down)
- *   - mouse uses `mousedown`, not `click`
+ *   - pointers fire on `pointerdown`, never `click` — `click` can't tell the
+ *     buttons apart and feels laggy
+ *   - a touch is not a mouse: clicks mode reads the mouse *button*, but a
+ *     touchscreen has no right button, so a tap reads which *pad* it landed on
  */
 
 import {
@@ -45,6 +48,39 @@ export interface BoardOptions {
   readonly surface?: HTMLElement
 }
 
+export interface PointerInput {
+  /** `PointerEvent.pointerType`: 'mouse', 'touch' or 'pen'. */
+  readonly pointerType: string
+  /** `PointerEvent.button`. Meaningless for touch, which always reports 0. */
+  readonly button: number
+  /** The pad the pointer landed on, or null for bare play area. */
+  readonly onPad: SymbolId | null
+}
+
+/**
+ * Which symbol a pointer press means, or null for "not an input".
+ *
+ * Pure and exported so the rule can be tested directly — it's the one piece of
+ * input handling where mouse and touch genuinely disagree:
+ *
+ *   - mouse, clicks mode  → the *button* is the symbol, anywhere in the area
+ *   - mouse, arrows mode  → left button on a pad
+ *   - touch, either mode  → whichever *pad* was tapped, because a touchscreen
+ *                           has no second button to read
+ */
+export function resolvePointer(
+  mode: ModeDef,
+  { pointerType, button, onPad }: PointerInput,
+): SymbolId | null {
+  if (pointerType === 'mouse') {
+    const byButton = symbolForButton(mode, button)
+    if (byButton) return byButton.id
+    // Middle/back/forward are never inputs.
+    if (button !== 0) return null
+  }
+  return onPad
+}
+
 export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   const element = document.createElement('div')
   element.className = `board board--${mode.layout}`
@@ -73,25 +109,24 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
     onInput(symbol.id)
   }
 
-  function onMouseDown(event: MouseEvent): void {
+  function onPointerDown(event: PointerEvent): void {
     const target = event.target as HTMLElement | null
-    // Buttons activate themselves — a click on one is never a game input.
+    // Buttons activate themselves — a press on one is never a game input.
     if (target?.closest('button')) return
 
-    // In clicks mode the button itself is the symbol, wherever it lands in
-    // the play area. In arrows mode the pad you hit is the symbol.
-    const byButton = symbolForButton(mode, event.button)
-    if (byButton) {
-      event.preventDefault()
-      onInput(byButton.id)
-      return
-    }
-    if (event.button !== 0) return
     const pad = target?.closest('.pad')
-    const id = pad instanceof HTMLElement ? pad.dataset.symbol : undefined
-    if (!id) return
+    const onPad =
+      pad instanceof HTMLElement ? (pad.dataset.symbol as SymbolId) : null
+
+    const symbol = resolvePointer(mode, {
+      pointerType: event.pointerType,
+      button: event.button,
+      onPad,
+    })
+    if (!symbol) return
+
     event.preventDefault()
-    onInput(id as SymbolId)
+    onInput(symbol)
   }
 
   function onContextMenu(event: MouseEvent): void {
@@ -100,7 +135,7 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   }
 
   window.addEventListener('keydown', onKeyDown)
-  playArea.addEventListener('mousedown', onMouseDown)
+  playArea.addEventListener('pointerdown', onPointerDown)
   playArea.addEventListener('contextmenu', onContextMenu)
 
   /* Rendering ------------------------------------------------------------ */
@@ -165,7 +200,7 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
 
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
-      playArea.removeEventListener('mousedown', onMouseDown)
+      playArea.removeEventListener('pointerdown', onPointerDown)
       playArea.removeEventListener('contextmenu', onContextMenu)
       for (const id of timers.values()) clearTimeout(id)
       timers.clear()
