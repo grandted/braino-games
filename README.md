@@ -36,19 +36,27 @@ different kind of hard.
 
 ## How it works
 
-Level 1 shows one input. Reproduce it and level 2 shows the same input
+Round 1 shows one input. Reproduce it and round 2 shows the same input
 plus a new one. The sequence is append-only, which is what makes it
 trainable — you're not memorising a fresh string each round, you're
 building a motor pattern and extending it.
 
-Speed increases with level. There's no time limit on your inputs.
+Every correct input bonds one base pair of DNA. Fill a genome and you
+evolve: virus, bacterium, amoeba, sponge, jellyfish, fish, and on up
+toward human at round 21. That's your **level**.
 
-You get three lives. A wrong input spends one and replays the same level
+Speed increases with each round. There's no time limit on your inputs.
+
+You get three lives. A wrong input spends one and replays the same round
 — same sequence, another go at it. The third miss ends the run.
 
-Scores are ranked by level reached, then by average reaction time. The
-board is per mode and never merged — a level-10 clicks run is not a
-level-10 arrows run.
+**Points** are what the board ranks on, and they reward speed: each round
+pays for its depth multiplied by how fast you answered it, plus a bonus
+every time you evolve. A quick player can top the board having survived
+fewer rounds than the player below them.
+
+After points come level, then rounds, then reaction time. The board is
+per mode and never merged — a clicks run is not an arrows run.
 
 ## Leaderboard
 
@@ -62,15 +70,17 @@ trying to be.
 
 ## Status
 
-**v0.2** — global leaderboard, mobile play.
+**v0.3** — evolution levels, points, global leaderboard, mobile play.
 
 Roadmap:
-- v0.3 — additional modes (WASD, numpad, mixed)
+- v0.3 phase 2 — the animated 3D DNA helix
+- v0.4 — additional modes (WASD, numpad, mixed)
 
 ## Docs
 
 - [`docs/SPEC.md`](docs/SPEC.md) — game rules, timing, scope
 - [`docs/SPEC-v0.2.md`](docs/SPEC-v0.2.md) — global leaderboard, mobile
+- [`docs/SPEC-v0.3.md`](docs/SPEC-v0.3.md) — rounds, levels, points, DNA
 - [`CLAUDE.md`](CLAUDE.md) — context for Claude Code
 
 ## Stack

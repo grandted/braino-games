@@ -32,6 +32,10 @@ const CUES = {
   missFromHz: 196,
   missToHz: 65,
   missMs: 420,
+  /** Evolution fanfare: a rising major arpeggio, one note per step. */
+  evolveHz: [523.25, 659.25, 783.99, 1046.5], // C5 E5 G5 C6
+  evolveNoteMs: 150,
+  evolveStepS: 0.075,
 } as const
 
 export interface Tones {
@@ -42,8 +46,10 @@ export interface Tones {
   resume(): void
   /** A symbol's pitch, held for `durationMs`. */
   play(symbol: SymbolDef, durationMs: number): void
-  /** Two rising blips after a cleared level. */
-  levelClear(): void
+  /** Two rising blips after a cleared round. */
+  roundClear(): void
+  /** Rising arpeggio when a genome completes and the run evolves. */
+  evolve(): void
   /** Descending buzz for a spent life. */
   miss(): void
   destroy(): void
@@ -130,9 +136,15 @@ export function createTones(): Tones {
       tone(symbol.toneHz, durationMs)
     },
 
-    levelClear() {
+    roundClear() {
       tone(CUES.clearFirstHz, CUES.clearNoteMs, 'sine')
       tone(CUES.clearSecondHz, CUES.clearSecondMs, 'sine', CUES.clearGapS)
+    },
+
+    evolve() {
+      CUES.evolveHz.forEach((hz, step) => {
+        tone(hz, CUES.evolveNoteMs, 'triangle', step * CUES.evolveStepS)
+      })
     },
 
     miss() {

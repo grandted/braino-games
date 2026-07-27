@@ -29,13 +29,29 @@ interface Row {
   id: number
   nickname: string
   mode: string
+  points: number
   level: number
+  rounds: number
   avgReactionMs: number
   fastestInputMs: number
   totalInputs: number
   runDurationMs: number
   achievedAt: string
 }
+
+/** Columns every read returns, in one place so the two selects cannot drift. */
+const COLUMNS = `
+  id, nickname, mode, points, level, rounds, avgReactionMs, fastestInputMs,
+  totalInputs, runDurationMs, achievedAt
+`
+
+/**
+ * Must stay identical to `sortEntries` in src/leaderboard/types.ts, and to the
+ * comparison ladder in `countBetter` below.
+ */
+const RANK_ORDER = `
+  points desc, level desc, rounds desc, avgReactionMs asc, achievedAt asc
+`
 
 export function openStore(path: string): Store {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
@@ -45,11 +61,13 @@ export function openStore(path: string): Store {
     pragma journal_mode = wal;
     pragma foreign_keys = on;
 
-    create table if not exists leaderboardEntry (
+    create table if not exists leaderboardEntryV2 (
       id             integer primary key autoincrement,
       nickname       text    not null,
       mode           text    not null,
+      points         integer not null,
       level          integer not null,
+      rounds         integer not null,
       avgReactionMs  integer not null,
       fastestInputMs integer not null,
       totalInputs    integer not null,
@@ -57,48 +75,55 @@ export function openStore(path: string): Store {
       achievedAt     text    not null
     );
 
-    create index if not exists leaderboardEntryRank
-      on leaderboardEntry (mode, level desc, avgReactionMs asc, achievedAt asc);
+    create index if not exists leaderboardEntryV2Rank
+      on leaderboardEntryV2 (mode, points desc, level desc, rounds desc,
+                             avgReactionMs asc, achievedAt asc);
 
-    create index if not exists leaderboardEntryAchievedAt
-      on leaderboardEntry (mode, achievedAt);
+    create index if not exists leaderboardEntryV2AchievedAt
+      on leaderboardEntryV2 (mode, achievedAt);
+
+    -- v0.3 replaced the schema outright. Pre-v0.3 rows have no points and no
+    -- rounds column, and scoring them after the fact would be inventing
+    -- numbers nobody earned, so the old table goes.
+    drop table if exists leaderboardEntry;
   `)
 
-  // Ranking order is the shared rule: level down, then reaction time up, then
-  // whoever got there first.
   const selectWindowed = db.prepare(`
-    select id, nickname, mode, level, avgReactionMs, fastestInputMs,
-           totalInputs, runDurationMs, achievedAt
-      from leaderboardEntry
+    select ${COLUMNS}
+      from leaderboardEntryV2
      where mode = ?
        and achievedAt >= ?
-     order by level desc, avgReactionMs asc, achievedAt asc
+     order by ${RANK_ORDER}
      limit ?
   `)
 
   const selectAllTime = db.prepare(`
-    select id, nickname, mode, level, avgReactionMs, fastestInputMs,
-           totalInputs, runDurationMs, achievedAt
-      from leaderboardEntry
+    select ${COLUMNS}
+      from leaderboardEntryV2
      where mode = ?
-     order by level desc, avgReactionMs asc, achievedAt asc
+     order by ${RANK_ORDER}
      limit ?
   `)
 
   const insertEntry = db.prepare(`
-    insert into leaderboardEntry
-      (nickname, mode, level, avgReactionMs, fastestInputMs, totalInputs,
-       runDurationMs, achievedAt)
-    values (?, ?, ?, ?, ?, ?, ?, ?)
+    insert into leaderboardEntryV2
+      (nickname, mode, points, level, rounds, avgReactionMs, fastestInputMs,
+       totalInputs, runDurationMs, achievedAt)
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
+  // The same five keys as RANK_ORDER, unrolled into a strict "is better than"
+  // comparison. Each line ties every key above it and wins on its own.
   const countBetter = db.prepare(`
     select count(*) as better
-      from leaderboardEntry
+      from leaderboardEntryV2
      where mode = ?
-       and (level > ?
-            or (level = ? and avgReactionMs < ?)
-            or (level = ? and avgReactionMs = ? and achievedAt < ?))
+       and (points > ?
+            or (points = ? and level > ?)
+            or (points = ? and level = ? and rounds > ?)
+            or (points = ? and level = ? and rounds = ? and avgReactionMs < ?)
+            or (points = ? and level = ? and rounds = ? and avgReactionMs = ?
+                and achievedAt < ?))
   `)
 
   return {
@@ -115,7 +140,9 @@ export function openStore(path: string): Store {
       const result = insertEntry.run(
         draft.nickname,
         draft.mode,
+        draft.points,
         draft.level,
+        draft.rounds,
         draft.avgReactionMs,
         draft.fastestInputMs,
         draft.totalInputs,
@@ -126,14 +153,24 @@ export function openStore(path: string): Store {
     },
 
     rankOf(entry) {
+      const { points, level, rounds, avgReactionMs, achievedAt } = entry
       const row = countBetter.get(
         entry.mode,
-        entry.level,
-        entry.level,
-        entry.avgReactionMs,
-        entry.level,
-        entry.avgReactionMs,
-        entry.achievedAt,
+        points,
+        points,
+        level,
+        points,
+        level,
+        rounds,
+        points,
+        level,
+        rounds,
+        avgReactionMs,
+        points,
+        level,
+        rounds,
+        avgReactionMs,
+        achievedAt,
       ) as unknown as { better: number } | undefined
       return (row?.better ?? 0) + 1
     },
@@ -149,7 +186,9 @@ function toEntry(row: Row): Entry {
     id: String(row.id),
     nickname: row.nickname,
     mode: row.mode as ModeId,
+    points: row.points,
     level: row.level,
+    rounds: row.rounds,
     avgReactionMs: row.avgReactionMs,
     fastestInputMs: row.fastestInputMs,
     totalInputs: row.totalInputs,

@@ -5,8 +5,26 @@ Context for Claude Code. Read this before making changes.
 ## What this is
 
 **Tangent** — a browser-based muscle-memory game. A sequence of inputs is
-shown, the player repeats it, the sequence grows by one each level. Two
+shown, the player repeats it, the sequence grows by one each round. Two
 modes: arrow keys (4 symbols) and mouse buttons (2 symbols).
+
+## Vocabulary — read this before touching anything
+
+v0.3 renamed the core noun. **Everything called `level` before v0.3 is now
+called `round`**, and `level` now means something else entirely. Git
+history, old commit messages and your instincts are all misleading here.
+
+| Term | Meaning |
+|------|---------|
+| **round** | one sequence reproduction; round N has N symbols. Was `level`. |
+| **level** | evolutionary tier — the organism whose genome is being solved |
+| **base pair** | one correct input; bonds one rung of the organism's genome |
+| **genome** | base pairs needed to finish the current level |
+| **points** | score; rewards clearing rounds quickly. Primary board measure. |
+
+Levels complete on round boundaries (see `game/evolution.ts`), so level is
+a pure function of rounds cleared. It is a milestone and a display band,
+not an independent ranking signal — points are what separate the board.
 
 Training goal for the player: pattern chunking and motor recall. Design
 goal for us: **zero friction**. Open page → play in under 3 seconds, fail
@@ -63,8 +81,10 @@ src/
 ├── game/
 │   ├── engine.ts        state machine: idle→playback→input→result
 │   ├── sequence.ts      generation + validation
+│   ├── evolution.ts     the organism ladder: genomes, tiers, names
+│   ├── scoring.ts       points per round, evolution bonus, server ceiling
 │   └── modes.ts         mode definitions (symbols, keybinds, colors),
-│                        plus TIMING and RULES — every tunable
+│                        plus TIMING, RULES and SCORING — every tunable
 ├── ui/
 │   ├── screens.ts       menu / game / gameover / leaderboard
 │   ├── board.ts         renders the pad, flash animation, all input
@@ -89,10 +109,17 @@ localStorage provider for a remote one and only `leaderboard/index.ts`
 changed. Never let leaderboard concerns leak into `game/` — the engine
 does not know a leaderboard exists.
 
-**`src/leaderboard/types.ts` and `src/game/modes.ts` are shared with the
-server.** Both are DOM-free and must stay that way: the server imports
-them so the ranking order, the nickname rules and the timing curve
-cannot drift between the two ends. Touching either means touching both.
+**`src/game/modes.ts`, `src/game/evolution.ts`, `src/game/scoring.ts` and
+`src/leaderboard/types.ts` are shared with the server.** All four are
+DOM-free and must stay that way: the server imports them so the ranking
+order, the nickname rules, the timing curve, the organism ladder and the
+points ceiling cannot drift between the two ends. Touching one means
+checking both sides.
+
+**The ranking rule is written three times** — `sortEntries()` in
+`leaderboard/types.ts`, and both `RANK_ORDER` and `countBetter` in
+`server/db.ts`. They must agree exactly. There is a scratchpad test that
+compares them; run it after any change to the order.
 
 ## Invariants — do not break these
 
@@ -105,7 +132,8 @@ cannot drift between the two ends. Touching either means touching both.
 4. **`preventDefault` on `contextmenu`** — otherwise right-click in mouse
    mode opens the browser menu mid-round.
 5. **No countdown between rounds.** After a correct answer, the next
-   sequence starts within ~600ms. Waiting kills the feel.
+   sequence starts within ~600ms. Waiting kills the feel. The evolution
+   cue has to fit inside that window rather than extending it.
 6. **Every state is reachable by keyboard alone, by mouse alone, and by
    touch alone.** Including menu navigation and retry.
 7. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
@@ -131,5 +159,6 @@ In use now — see `server/db.ts`.
 ## Scope discipline
 
 `docs/SPEC.md` defines v0.1, `docs/SPEC-v0.2.md` the global leaderboard
-and mobile play. Anything marked "later" stays out. If a change feels
-like it needs a new dependency or a build step, stop and ask first.
+and mobile play, `docs/SPEC-v0.3.md` rounds/levels/points and the DNA
+helix. Anything marked "later" stays out. If a change feels like it needs
+a new dependency or a build step, stop and ask first.

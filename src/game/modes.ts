@@ -154,15 +154,15 @@ export const RULES = {
  */
 
 export const TIMING = {
-  /** Beat before a level's first flash, so the level change registers. */
+  /** Beat before a round's first flash, so the round change registers. */
   playbackLeadInMs: 420,
   /** SPEC: the next sequence starts within ~600ms. No countdown. */
-  nextLevelDelayMs: 600,
+  nextRoundDelayMs: 600,
   /** Feedback flash for the player's own input. */
   inputFlashMs: 150,
   /** Fail cue plays before the gameover screen appears. */
   failCueMs: 850,
-  /** Playback flash curve: clamp(520 - 25 * (level - 1), 180, 520). */
+  /** Playback flash curve: clamp(520 - 25 * (round - 1), 180, 520). */
   flashMaxMs: 520,
   flashMinMs: 180,
   flashDecayMs: 25,
@@ -170,17 +170,41 @@ export const TIMING = {
   gapRatio: 0.35,
 } as const
 
-function clamp(value: number, min: number, max: number): number {
+/* Scoring -----------------------------------------------------------------
+ * Points reward solving a round quickly. See game/scoring.ts for the shape.
+ */
+
+export const SCORING = {
+  /** Points a round is worth before the speed multiplier. */
+  pointsPerRound: 100,
+  /** Reacting at this speed scores exactly 1x. */
+  speedTargetMs: 600,
+  /** Bounds on the speed multiplier, so no single round dwarfs a run. */
+  speedMin: 0.5,
+  speedMax: 3,
+  /** Completing a genome pays this, times the tier completed. */
+  evolutionBonus: 1000,
+} as const
+
+export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
 }
 
-/** How long each symbol stays lit during playback at this level. */
-export function flashMsForLevel(level: number): number {
-  const raw = TIMING.flashMaxMs - TIMING.flashDecayMs * (level - 1)
+/** How long each symbol stays lit during playback in this round. */
+export function flashMsForRound(round: number): number {
+  const raw = TIMING.flashMaxMs - TIMING.flashDecayMs * (round - 1)
   return clamp(raw, TIMING.flashMinMs, TIMING.flashMaxMs)
 }
 
 /** Dark gap between playback flashes. Keeps repeated symbols distinct. */
-export function gapMsForLevel(level: number): number {
-  return Math.round(flashMsForLevel(level) * TIMING.gapRatio)
+export function gapMsForRound(round: number): number {
+  return Math.round(flashMsForRound(round) * TIMING.gapRatio)
+}
+
+/**
+ * Base pairs banked after clearing `rounds` rounds — the triangular number,
+ * since round N costs N correct inputs. The evolution ladder is built on it.
+ */
+export function basePairsAfterRound(rounds: number): number {
+  return (rounds * (rounds + 1)) / 2
 }

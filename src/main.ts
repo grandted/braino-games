@@ -4,6 +4,7 @@ import './styles/screens.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
 import { MODES, RULES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
+import { genomeProgress } from './game/evolution.ts'
 import { createLeaderboard } from './leaderboard/index.ts'
 import { createTones } from './ui/audio.ts'
 import {
@@ -97,11 +98,19 @@ function playMode(mode: ModeDef): void {
   /** The only place engine events become pixels. */
   function render(event: EngineEvent): void {
     switch (event.type) {
-      case 'level':
-        screen.setLevel(event.level)
+      case 'round': {
+        screen.setRound(event.round)
         screen.setProgress(0, event.sequence.length)
+        const progress = genomeProgress(engine.basePairs)
+        screen.setEvolution(
+          progress.organism.tier,
+          progress.organism.name,
+          progress.bonded,
+          progress.genome,
+        )
         screen.board.clear()
         break
+      }
 
       case 'phase':
         screen.board.setLocked(event.phase === 'playback')
@@ -118,15 +127,33 @@ function playMode(mode: ModeDef): void {
         tones.play(getSymbol(mode, event.symbol), event.durationMs)
         break
 
-      case 'accept':
+      case 'accept': {
         screen.board.pressed(event.symbol)
         tones.play(getSymbol(mode, event.symbol), TIMING.inputFlashMs)
         screen.setProgress(event.index + 1, engine.sequence.length)
+        // One correct input bonds one base pair of the current genome.
+        const bonded = genomeProgress(event.basePairs)
+        screen.setEvolution(
+          bonded.organism.tier,
+          bonded.organism.name,
+          bonded.bonded,
+          bonded.genome,
+        )
+        break
+      }
+
+      case 'roundClear':
+        screen.setStatus(`clear · +${event.points.toLocaleString()}`, 'good')
+        screen.setPoints(event.totalPoints)
+        tones.roundClear()
         break
 
-      case 'levelClear':
-        screen.setStatus('clear', 'good')
-        tones.levelClear()
+      case 'evolve':
+        // The Tetris moment: a genome completed, so the run changes species.
+        screen.setStatus(`evolved · ${event.organism}`, 'good')
+        screen.setPoints(event.totalPoints)
+        screen.evolve(event.level, event.organism)
+        tones.evolve()
         break
 
       case 'lives':
@@ -142,6 +169,13 @@ function playMode(mode: ModeDef): void {
           'bad',
         )
         screen.setLives(event.livesLeft, RULES.lives)
+        const unbonded = genomeProgress(event.basePairs)
+        screen.setEvolution(
+          unbonded.organism.tier,
+          unbonded.organism.name,
+          unbonded.bonded,
+          unbonded.genome,
+        )
         screen.board.showMiss(event.expected, event.received)
         screen.shake()
         tones.miss()
@@ -176,6 +210,8 @@ function playMode(mode: ModeDef): void {
     onInput: (symbol) => engine.press(symbol),
     onExit: showMenu,
   })
+
+  screen.setPoints(0)
 
   show(screen, () => {
     engine.stop()

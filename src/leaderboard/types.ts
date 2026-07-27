@@ -16,8 +16,12 @@ export interface Entry {
   readonly id: string
   readonly nickname: string
   readonly mode: ModeId
-  /** Primary score: highest level cleared. */
+  /** Primary score. Speed is what separates the board. */
+  readonly points: number
+  /** Evolutionary tier reached — see game/evolution.ts. */
   readonly level: number
+  /** Rounds cleared. Was called `level` before v0.3. */
+  readonly rounds: number
   /** Tiebreak, and a stat in its own right. */
   readonly avgReactionMs: number
   readonly fastestInputMs: number
@@ -88,13 +92,25 @@ export const NICKNAME_MIN = 2
 export const NICKNAME_MAX = 12
 
 /**
- * Level descending, then average reaction ascending, then oldest first — an
+ * Points first — that is the whole point of scoring on speed. A quick player
+ * can top the board with fewer rounds than the player below them.
+ *
+ * Then level, then rounds, then average reaction, then oldest first so an
  * equal run that got there earlier keeps the higher rank.
+ *
+ * Note that level is a function of rounds (genomes complete on round
+ * boundaries), so it never breaks a tie that rounds wouldn't. It is in the
+ * chain because it is what the board displays, not because it discriminates.
+ *
+ * `server/db.ts` mirrors this order in SQL, in both the listing query and the
+ * rank query. Change one and you must change all three.
  */
 export function sortEntries(entries: readonly Entry[]): Entry[] {
   return [...entries].sort(
     (a, b) =>
+      b.points - a.points ||
       b.level - a.level ||
+      b.rounds - a.rounds ||
       a.avgReactionMs - b.avgReactionMs ||
       a.achievedAt.localeCompare(b.achievedAt),
   )

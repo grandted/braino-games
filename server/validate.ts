@@ -13,10 +13,13 @@
 import {
   MODES,
   TIMING,
-  flashMsForLevel,
-  gapMsForLevel,
+  basePairsAfterRound,
+  flashMsForRound,
+  gapMsForRound,
   type ModeId,
 } from '../src/game/modes.ts'
+import { tierFor } from '../src/game/evolution.ts'
+import { maxPoints } from '../src/game/scoring.ts'
 import {
   NICKNAME_MAX,
   NICKNAME_MIN,
@@ -25,7 +28,7 @@ import {
 } from '../src/leaderboard/types.ts'
 
 /** Beyond any human run; a claim past this is a broken client or a lie. */
-const MAX_LEVEL = 500
+const MAX_ROUNDS = 500
 /** Nobody sees, decides and moves in under this. */
 const MIN_HUMAN_MS = 80
 /** No per-input timeout in the game, but an hour between inputs is noise. */
@@ -52,18 +55,34 @@ export function validateDraft(body: unknown): Validation {
   if (!isMode(raw.mode)) return fail('unknown mode')
   const mode: ModeId = raw.mode
 
-  const level = raw.level
-  if (!isCount(level) || level < 1 || level > MAX_LEVEL) {
-    return fail(`level must be between 1 and ${MAX_LEVEL}`)
+  const rounds = raw.rounds
+  if (!isCount(rounds) || rounds < 1 || rounds > MAX_ROUNDS) {
+    return fail(`rounds must be between 1 and ${MAX_ROUNDS}`)
   }
 
   const totalInputs = raw.totalInputs
   if (!isCount(totalInputs)) return fail('totalInputs must be a whole number')
-  // Clearing level N means having entered 1 + 2 + ... + N symbols at least.
+  // Clearing round N means having entered 1 + 2 + ... + N symbols at least.
   // Misses only ever add more, so this is a hard floor.
-  const minInputs = (level * (level + 1)) / 2
+  const minInputs = basePairsAfterRound(rounds)
   if (totalInputs < minInputs) {
-    return fail(`level ${level} needs at least ${minInputs} inputs`)
+    return fail(`${rounds} rounds needs at least ${minInputs} inputs`)
+  }
+
+  // Level is derived, not reported: genomes complete on round boundaries, so
+  // the server knows exactly which tier a given number of rounds reaches. A
+  // mismatch means the client is out of date or the payload was hand-made.
+  const level = raw.level
+  const expectedLevel = tierFor(minInputs)
+  if (!isCount(level) || level !== expectedLevel) {
+    return fail(`level for ${rounds} rounds must be ${expectedLevel}`)
+  }
+
+  const points = raw.points
+  if (!isCount(points)) return fail('points must be a whole number')
+  const ceiling = maxPoints(rounds)
+  if (points > ceiling) {
+    return fail(`points above what ${rounds} rounds can score (${ceiling})`)
   }
 
   const avgReactionMs = raw.avgReactionMs
@@ -85,9 +104,9 @@ export function validateDraft(body: unknown): Validation {
 
   const runDurationMs = raw.runDurationMs
   if (!isCount(runDurationMs)) return fail('runDurationMs must be a number')
-  const floor = minRunDurationMs(level, totalInputs, fastestInputMs)
+  const floor = minRunDurationMs(rounds, totalInputs, fastestInputMs)
   if (runDurationMs < floor * DURATION_TOLERANCE) {
-    return fail('run is shorter than its own levels would take to play')
+    return fail('run is shorter than its own rounds would take to play')
   }
 
   return {
@@ -95,7 +114,9 @@ export function validateDraft(body: unknown): Validation {
     draft: {
       nickname,
       mode,
+      points,
       level,
+      rounds,
       avgReactionMs,
       fastestInputMs,
       totalInputs,
@@ -105,21 +126,21 @@ export function validateDraft(body: unknown): Validation {
 }
 
 /**
- * The least time levels 1..N can physically take: every playback the game had
+ * The least time rounds 1..N can physically take: every playback the game had
  * to show, plus the player's own fastest input for each input they made.
- * Deliberately an undercount — it ignores the level they died on and any
+ * Deliberately an undercount — it ignores the round they died in and any
  * replay a miss caused.
  */
 function minRunDurationMs(
-  level: number,
+  rounds: number,
   totalInputs: number,
   fastestInputMs: number,
 ): number {
   let playback = 0
-  for (let current = 1; current <= level; current += 1) {
+  for (let round = 1; round <= rounds; round += 1) {
     playback +=
       TIMING.playbackLeadInMs +
-      current * (flashMsForLevel(current) + gapMsForLevel(current))
+      round * (flashMsForRound(round) + gapMsForRound(round))
   }
   return playback + totalInputs * fastestInputMs
 }

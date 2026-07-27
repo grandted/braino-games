@@ -1,8 +1,14 @@
 /**
  * The game state machine.
  *
- *   idle → playback → input → result → playback (next level)
+ *   idle → playback → input → result → playback (next round)
  *                                    ↘ gameover
+ *
+ * Vocabulary, because it changed in v0.3 and the old name is still all over
+ * the git history: a **round** is one sequence reproduction (round N has N
+ * symbols), and a **level** is the evolutionary tier — the organism whose
+ * genome the run is currently solving. Every correct input bonds one base
+ * pair; filling a genome evolves the run to the next level.
  *
  * No DOM access lives here — not a query, not an event listener, not a
  * class name. The engine emits events; the UI layer renders them. That
@@ -13,12 +19,15 @@
 import {
   RULES,
   TIMING,
-  flashMsForLevel,
-  gapMsForLevel,
+  basePairsAfterRound,
+  flashMsForRound,
+  gapMsForRound,
   type ModeDef,
   type ModeId,
   type SymbolId,
 } from './modes.ts'
+import { genomeProgress, organismFor, tierFor } from './evolution.ts'
+import { evolutionBonus, roundPoints } from './scoring.ts'
 import {
   extendSequence,
   isComplete,
@@ -34,7 +43,7 @@ export type Phase =
   | 'playback'
   /** Player is reproducing the sequence. */
   | 'input'
-  /** Level cleared, next one queued. */
+  /** Round cleared, next one queued. */
   | 'result'
   /** Window lost focus mid-playback; playback replays on return. */
   | 'paused'
@@ -43,8 +52,16 @@ export type Phase =
 /** Everything the leaderboard and the gameover screen need about a run. */
 export interface RunStats {
   readonly mode: ModeId
-  /** Highest level fully cleared. Failing on level 1 gives 0. */
+  /** Primary score. */
+  readonly points: number
+  /** Evolutionary tier reached. */
   readonly level: number
+  /** Name of the organism at that tier, for display. */
+  readonly organism: string
+  /** Rounds fully cleared. Failing in round 1 gives 0. */
+  readonly rounds: number
+  /** Base pairs banked — the genome progress behind `level`. */
+  readonly basePairs: number
   readonly avgReactionMs: number
   readonly fastestInputMs: number
   readonly totalInputs: number
@@ -55,20 +72,43 @@ export interface RunStats {
 
 export type EngineEvent =
   | { type: 'phase'; phase: Phase }
-  | { type: 'level'; level: number; sequence: Sequence }
+  | { type: 'round'; round: number; sequence: Sequence }
   | { type: 'flashOn'; symbol: SymbolId; index: number; durationMs: number }
   | { type: 'flashOff'; symbol: SymbolId; index: number }
   | { type: 'playbackEnd' }
-  | { type: 'accept'; symbol: SymbolId; index: number; reactionMs: number }
+  | {
+      type: 'accept'
+      symbol: SymbolId
+      index: number
+      reactionMs: number
+      /** Base pairs bonded so far, banked plus this round's progress. */
+      basePairs: number
+    }
   | {
       type: 'reject'
       expected: SymbolId
       received: SymbolId
       /** Lives left after paying for this miss. Zero means the run is over. */
       livesLeft: number
+      /** Base pairs after the failed round's progress is unbonded. */
+      basePairs: number
     }
   | { type: 'lives'; left: number }
-  | { type: 'levelClear'; level: number }
+  | {
+      type: 'roundClear'
+      round: number
+      points: number
+      totalPoints: number
+      basePairs: number
+    }
+  | {
+      type: 'evolve'
+      level: number
+      organism: string
+      genome: number
+      bonus: number
+      totalPoints: number
+    }
   | { type: 'gameOver'; stats: RunStats }
 
 export interface EngineOptions {
@@ -88,14 +128,17 @@ export class Engine {
 
   #phase: Phase = 'idle'
   #sequence: Sequence = []
-  /** How far through the sequence the player has got this level. */
+  /** How far through the sequence the player has got this round. */
   #inputIndex = 0
   #timers: TimerId[] = []
   #reactions: number[] = []
+  /** Reaction times within the current round only — this round's speed score. */
+  #roundReactions: number[] = []
   /** End of playback, or the previous accepted input. */
   #lastInputAt = 0
   #runStartedAt = 0
-  #clearedLevels = 0
+  #clearedRounds = 0
+  #points = 0
   #livesLeft = RULES.lives
   #mistakes = 0
 
@@ -114,8 +157,8 @@ export class Engine {
     return this.#phase
   }
 
-  /** The level being played right now (1-based). */
-  get level(): number {
+  /** The round being played right now (1-based). */
+  get round(): number {
     return this.#sequence.length
   }
 
@@ -127,17 +170,35 @@ export class Engine {
     return this.#livesLeft
   }
 
-  /** Begin a fresh run at level 1. Safe to call from any phase. */
+  get points(): number {
+    return this.#points
+  }
+
+  /**
+   * Base pairs bonded: everything banked by cleared rounds, plus the progress
+   * made so far in the round underway. A miss rolls the live part back.
+   */
+  get basePairs(): number {
+    return basePairsAfterRound(this.#clearedRounds) + this.#inputIndex
+  }
+
+  /** The evolutionary tier the run currently stands in. */
+  get level(): number {
+    return tierFor(this.basePairs)
+  }
+
+  /** Begin a fresh run at round 1. Safe to call from any phase. */
   start(): void {
     this.#cancelTimers()
     this.#sequence = startSequence(this.#mode, this.#random)
     this.#reactions = []
-    this.#clearedLevels = 0
+    this.#clearedRounds = 0
+    this.#points = 0
     this.#livesLeft = RULES.lives
     this.#mistakes = 0
     this.#runStartedAt = this.#now()
     this.#emit({ type: 'lives', left: this.#livesLeft })
-    this.#beginLevel()
+    this.#beginRound()
   }
 
   /**
@@ -158,10 +219,17 @@ export class Engine {
     const reactionMs = at - this.#lastInputAt
     this.#lastInputAt = at
     this.#reactions.push(reactionMs)
+    this.#roundReactions.push(reactionMs)
     this.#inputIndex += 1
-    this.#emit({ type: 'accept', symbol, index, reactionMs })
+    this.#emit({
+      type: 'accept',
+      symbol,
+      index,
+      reactionMs,
+      basePairs: this.basePairs,
+    })
 
-    if (isComplete(this.#sequence, this.#inputIndex)) this.#clearLevel()
+    if (isComplete(this.#sequence, this.#inputIndex)) this.#clearRound()
   }
 
   /**
@@ -175,10 +243,10 @@ export class Engine {
     this.#setPhase('paused')
   }
 
-  /** Focus came back: replay the current level from the top. */
+  /** Focus came back: replay the current round from the top. */
   handleFocus(): void {
     if (this.#phase !== 'paused') return
-    this.#beginLevel()
+    this.#beginRound()
   }
 
   /** Abandon the run and drop every pending timer. */
@@ -189,17 +257,18 @@ export class Engine {
 
   /* internals ----------------------------------------------------------- */
 
-  #beginLevel(): void {
+  #beginRound(): void {
     this.#cancelTimers()
     this.#inputIndex = 0
-    this.#emit({ type: 'level', level: this.level, sequence: this.#sequence })
+    this.#roundReactions = []
+    this.#emit({ type: 'round', round: this.round, sequence: this.#sequence })
     this.#setPhase('playback')
     this.#schedulePlayback()
   }
 
   #schedulePlayback(): void {
-    const flashMs = flashMsForLevel(this.level)
-    const gapMs = gapMsForLevel(this.level)
+    const flashMs = flashMsForRound(this.round)
+    const gapMs = gapMsForRound(this.round)
     let at = TIMING.playbackLeadInMs
 
     this.#sequence.forEach((symbol, index) => {
@@ -223,29 +292,73 @@ export class Engine {
     })
   }
 
-  #clearLevel(): void {
-    this.#clearedLevels = this.level
+  #clearRound(): void {
+    const round = this.round
+    // Derived from banked totals, not from live state: at this instant the
+    // round's inputs are about to move from "in progress" to "banked", and
+    // reading `this.level` across that move would count them twice.
+    const levelBefore = tierFor(basePairsAfterRound(round - 1))
+    const levelAfter = tierFor(basePairsAfterRound(round))
+
+    this.#clearedRounds = round
+    this.#inputIndex = 0
     this.#setPhase('result')
-    this.#emit({ type: 'levelClear', level: this.level })
-    this.#after(TIMING.nextLevelDelayMs, () => {
+
+    const award = roundPoints(round, this.#averageRoundReaction())
+    this.#points += award
+    this.#emit({
+      type: 'roundClear',
+      round,
+      points: award,
+      totalPoints: this.#points,
+      basePairs: this.basePairs,
+    })
+
+    // Genomes are sized to complete exactly on a round boundary, so this is
+    // the only place evolution can happen. The loop covers the theoretical
+    // case of one round spanning more than one tiny genome.
+    for (let tier = levelBefore; tier < levelAfter; tier += 1) {
+      const bonus = evolutionBonus(tier)
+      this.#points += bonus
+      const organism = organismFor(tier)
+      this.#emit({
+        type: 'evolve',
+        level: tier,
+        organism: organism.name,
+        genome: organism.genome,
+        bonus,
+        totalPoints: this.#points,
+      })
+    }
+
+    this.#after(TIMING.nextRoundDelayMs, () => {
       this.#sequence = extendSequence(this.#sequence, this.#mode, this.#random)
-      this.#beginLevel()
+      this.#beginRound()
     })
   }
 
   /**
-   * A wrong answer costs a life. While lives remain the *same* level replays
+   * A wrong answer costs a life. While lives remain the *same* round replays
    * from the top — the sequence is never regenerated, or the player would be
-   * re-memorising instead of drilling the pattern they just lost.
+   * re-memorising instead of drilling the pattern they just lost. The base
+   * pairs earned during the failed attempt unbond with it.
    */
   #miss(expected: SymbolId, received: SymbolId): void {
     this.#mistakes += 1
     this.#livesLeft -= 1
+    this.#inputIndex = 0
+    this.#roundReactions = []
     this.#setPhase('result')
-    this.#emit({ type: 'reject', expected, received, livesLeft: this.#livesLeft })
+    this.#emit({
+      type: 'reject',
+      expected,
+      received,
+      livesLeft: this.#livesLeft,
+      basePairs: this.basePairs,
+    })
 
     if (this.#livesLeft > 0) {
-      this.#after(TIMING.failCueMs, () => this.#beginLevel())
+      this.#after(TIMING.failCueMs, () => this.#beginRound())
       return
     }
 
@@ -256,12 +369,26 @@ export class Engine {
     })
   }
 
+  /** Mean reaction across the round just cleared — this round's speed score. */
+  #averageRoundReaction(): number {
+    if (this.#roundReactions.length === 0) return 0
+    const sum = this.#roundReactions.reduce((a, b) => a + b, 0)
+    return sum / this.#roundReactions.length
+  }
+
   #buildStats(): RunStats {
     const total = this.#reactions.length
     const sum = this.#reactions.reduce((a, b) => a + b, 0)
+    const banked = basePairsAfterRound(this.#clearedRounds)
+    const progress = genomeProgress(banked)
+
     return {
       mode: this.#mode.id,
-      level: this.#clearedLevels,
+      points: this.#points,
+      level: progress.organism.tier,
+      organism: progress.organism.name,
+      rounds: this.#clearedRounds,
+      basePairs: banked,
       avgReactionMs: total === 0 ? 0 : Math.round(sum / total),
       fastestInputMs: total === 0 ? 0 : Math.round(Math.min(...this.#reactions)),
       totalInputs: total,

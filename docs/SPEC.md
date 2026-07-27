@@ -1,11 +1,17 @@
 # Tangent — v0.1 Specification
 
+> **Vocabulary note.** v0.3 renamed this document's "level" to **round**,
+> and reused "level" for the evolutionary tier. This file has been updated
+> to the new term. The **Scoring** and **Leaderboard** sections below are
+> superseded by [`SPEC-v0.3.md`](SPEC-v0.3.md) and
+> [`SPEC-v0.2.md`](SPEC-v0.2.md).
+
 ## Concept
 
-Watch a sequence. Repeat it. It grows by one every level. A miss costs a
-life; three misses and the round ends.
+Watch a sequence. Repeat it. It grows by one every round. A miss costs a
+life; three misses and the run ends.
 
-Level 1 is one input. Level 7 is seven. There is no upper bound — the
+Round 1 is one input. Round 7 is seven. There is no upper bound — the
 game ends when you do.
 
 ---
@@ -17,8 +23,8 @@ game ends when you do.
 | **Arrows** | `up`, `down`, `left`, `right` | 2 bits | Rendered as the standard inverted-T key cluster |
 | **Clicks** | `left`, `right` | 1 bit | Two large pads |
 
-Clicks mode is deliberately lower-entropy. A level-10 arrow sequence is
-much harder than a level-10 click sequence, so **leaderboards are per
+Clicks mode is deliberately lower-entropy. A round-10 arrow sequence is
+much harder than a round-10 click sequence, so **leaderboards are per
 mode and never merged**. Don't "fix" this by averaging them.
 
 ---
@@ -39,43 +45,44 @@ menu → [pick mode] → playback → input → result
    Input is locked and visibly so.
 2. **Input** — player reproduces the sequence. Each correct input gives
    immediate feedback (flash + tone). No confirmation step.
-3. **Result** — correct: brief success cue, next level starts in ~600ms
+3. **Result** — correct: brief success cue, next round starts in ~600ms
    with the same sequence plus one new symbol appended. Wrong: fail cue,
-   one life spent, and the *same* level replays from playback. On the
+   one life spent, and the *same* round replays from playback. On the
    third miss the run ends and the gameover screen appears.
 
-**The sequence is append-only.** Level 4 is level 3's sequence plus one.
-This is what makes it trainable — regenerating from scratch each level
+**The sequence is append-only.** Round 4 is round 3's sequence plus one.
+This is what makes it trainable — regenerating from scratch each round
 would test short-term memory instead of muscle memory.
 
 ---
 
 ## Lives
 
-A run has three. They do not regenerate — clearing levels does not buy
+A run has three. They do not regenerate — clearing rounds does not buy
 them back, so a run is bounded by three mistakes however long it lasts.
 
-The replayed level keeps its sequence. Regenerating it after a miss
+The replayed round keeps its sequence. Regenerating it after a miss
 would hand the player a fresh string to memorise instead of another go
 at the pattern they just lost, which is the opposite of drilling.
 
-Lives are a run-level counter and never enter the leaderboard entry —
-the score is still level reached, tiebroken on reaction time.
+Lives are a run-wide counter and never enter the leaderboard entry.
 
 ---
 
 ## Timing
 
-Speed scales with level so early rounds don't drag and late rounds bite.
+Speed scales with the round so early rounds don't drag and late rounds
+bite.
 
 ```
-flashMs = clamp(520 - 25 * (level - 1), 180, 520)
+flashMs = clamp(520 - 25 * (round - 1), 180, 520)
 gapMs   = flashMs * 0.35
 ```
 
-- Level 1: 520ms flash, 182ms gap
-- Level 8: 345ms / 121ms
-- Level 14+: floored at 180ms / 63ms
+- Round 1: 520ms flash, 182ms gap
+- Round 8: 345ms / 121ms
+- Round 15+: floored at 180ms / 63ms (the formula, not the table, is
+  authoritative — round 14 is still 195ms)
 
 No per-input timeout in v0.1. Thinking time is free; only accuracy ends
 the round.
@@ -84,7 +91,10 @@ the round.
 
 ## Scoring
 
-- **Primary**: highest level reached
+> Superseded by [`SPEC-v0.3.md`](SPEC-v0.3.md): points are now primary,
+> then level, then rounds, then reaction time.
+
+- **Primary**: rounds cleared
 - **Tiebreak**: lower average reaction time across the whole run
 
 Reaction time = ms between the previous input (or end of playback, for
@@ -94,6 +104,9 @@ the first) and the current keypress.
 
 ## Leaderboard
 
+> Superseded by [`SPEC-v0.2.md`](SPEC-v0.2.md) (global, time windows) and
+> [`SPEC-v0.3.md`](SPEC-v0.3.md) (points, levels, rounds).
+
 Per mode, top 20. Nickname 2–12 chars, submitted after a run.
 
 Each entry stores:
@@ -102,7 +115,7 @@ Each entry stores:
 |-------|---------|
 | `nickname` | player-chosen |
 | `mode` | arrows / clicks |
-| `level` | primary score |
+| `rounds` | rounds cleared (was `level` before v0.3) |
 | `avgReactionMs` | tiebreak + stat |
 | `fastestInputMs` | fun stat |
 | `totalInputs` | fun stat |

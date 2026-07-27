@@ -88,11 +88,107 @@
   color: var(--text-dim);
 }
 
-.hud__level {
+/* Points lead the HUD because they lead the leaderboard. */
+.hud__points {
   font-size: clamp(34px, 9vw, 54px);
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud__round {
+  font: 700 13px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Evolution: which organism, and how much of its genome is bonded. */
+.evolution {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.evolution__name {
+  font: 700 12px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.evolution__genome {
+  display: block;
+  width: 110px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--line-bright);
+  overflow: hidden;
+}
+
+.evolution__fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 180ms ease-out;
+}
+
+/* The Tetris moment. Phase 2 turns this into the full helix transition. */
+.evolve-banner {
+  font: 800 clamp(18px, 4vw, 26px) / 1 var(--sans);
+  letter-spacing: -0.02em;
+  text-transform: lowercase;
+  color: var(--ok);
+  min-height: 1em;
+  opacity: 0;
+}
+
+.screen--game.is-evolving .evolve-banner {
+  animation: evolve-in 600ms ease-out;
+}
+
+.screen--game.is-evolving .evolution__name,
+.screen--game.is-evolving .hud__points {
+  animation: evolve-pop 600ms ease-out;
+}
+
+@keyframes evolve-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  30%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes evolve-pop {
+  50% {
+    transform: scale(1.14);
+    color: var(--ok);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen--game.is-evolving .evolve-banner {
+    animation: none;
+    opacity: 1;
+  }
+
+  .screen--game.is-evolving .evolution__name,
+  .screen--game.is-evolving .hud__points {
+    animation: none;
+  }
 }
 
 .lives {
@@ -233,6 +329,12 @@
 .over__score strong {
   font-size: 1.6em;
   color: var(--text);
+}
+
+.over__reached {
+  font-size: clamp(15px, 3.5vw, 18px);
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .over__mode {
@@ -450,9 +552,10 @@
   white-space: nowrap;
 }
 
-.entry__level {
+.entry__points {
   font: 800 17px/1 var(--mono);
   color: var(--sym);
+  font-variant-numeric: tabular-nums;
 }
 
 .entry__reaction,
@@ -526,7 +629,7 @@
     margin-top: auto;
   }
 
-  .screen--game .hud__level {
+  .screen--game .hud__points {
     font-size: clamp(28px, 8vw, 40px);
   }
 
@@ -566,7 +669,7 @@
     display: none;
   }
 
-  .screen--game .hud__level {
+  .screen--game .hud__points {
     font-size: 24px;
   }
 

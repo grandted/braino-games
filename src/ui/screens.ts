@@ -5,7 +5,14 @@
  * is operable with the keyboard alone and with the mouse alone.
  */
 
-import { MODES, getMode, type ModeDef, type SymbolId } from '../game/modes.ts'
+import {
+  MODES,
+  TIMING,
+  getMode,
+  type ModeDef,
+  type SymbolId,
+} from '../game/modes.ts'
+import { organismFor } from '../game/evolution.ts'
 import type { RunStats } from '../game/engine.ts'
 import {
   DEFAULT_WINDOW,
@@ -120,7 +127,7 @@ export function createMenuScreen({
   const subtitle = document.createElement('p')
   subtitle.className = 'subtitle'
   subtitle.textContent =
-    'Watch the sequence. Repeat it. It grows by one every level.'
+    'Watch the sequence. Repeat it. It grows by one every round.'
 
   const list = document.createElement('div')
   list.className = 'mode-list'
@@ -211,7 +218,12 @@ export type StatusTone = 'watch' | 'go' | 'good' | 'bad' | 'paused'
 
 export interface GameScreen extends Screen {
   readonly board: Board
-  setLevel(level: number): void
+  setRound(round: number): void
+  /** The organism being solved, and how far into its genome the run is. */
+  setEvolution(level: number, organism: string, bonded: number, genome: number): void
+  setPoints(points: number): void
+  /** A genome completed: announce the new organism and change the palette. */
+  evolve(level: number, organism: string): void
   setStatus(text: string, tone: StatusTone): void
   setProgress(done: number, total: number): void
   setLives(left: number, total: number): void
@@ -241,8 +253,26 @@ export function createGameScreen({
   modeTag.className = 'hud__mode'
   modeTag.textContent = mode.name
 
-  const level = document.createElement('p')
-  level.className = 'hud__level'
+  // Points lead the HUD because they lead the leaderboard.
+  const points = document.createElement('p')
+  points.className = 'hud__points'
+
+  const round = document.createElement('p')
+  round.className = 'hud__round'
+
+  const evolution = document.createElement('p')
+  evolution.className = 'evolution'
+
+  const organismName = document.createElement('span')
+  organismName.className = 'evolution__name'
+
+  const genomeBar = document.createElement('span')
+  genomeBar.className = 'evolution__genome'
+  const genomeFill = document.createElement('span')
+  genomeFill.className = 'evolution__fill'
+  genomeBar.append(genomeFill)
+
+  evolution.append(organismName, genomeBar)
 
   const status = document.createElement('p')
   status.className = 'hud__status'
@@ -252,11 +282,16 @@ export function createGameScreen({
   const lives = document.createElement('p')
   lives.className = 'lives'
 
-  header.append(modeTag, level, lives, status)
+  header.append(modeTag, points, round, evolution, lives, status)
 
   const progress = document.createElement('div')
   progress.className = 'progress'
   progress.setAttribute('aria-hidden', 'true')
+
+  // Sits over the board for the length of the evolution cue, then clears.
+  const banner = document.createElement('p')
+  banner.className = 'evolve-banner'
+  banner.setAttribute('aria-hidden', 'true')
 
   // The whole screen is the play area, not just the pad — a click that lands
   // slightly off a pad in clicks mode should still count.
@@ -279,7 +314,7 @@ export function createGameScreen({
   controls.className = 'controls'
   controls.append(quit, mute.element)
 
-  element.append(header, board.element, progress, controls, footer)
+  element.append(header, banner, board.element, progress, controls, footer)
 
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key !== 'Escape') return
@@ -293,8 +328,36 @@ export function createGameScreen({
     element,
     board,
 
-    setLevel(value) {
-      level.textContent = `Level ${value}`
+    setRound(value) {
+      round.textContent = `Round ${value}`
+    },
+
+    setEvolution(value, organism, bonded, genome) {
+      organismName.textContent = `Level ${value} · ${organism}`
+      const filled = genome === 0 ? 0 : Math.min(bonded / genome, 1)
+      genomeFill.style.transform = `scaleX(${filled})`
+      genomeBar.setAttribute(
+        'aria-label',
+        `${bonded} of ${genome} base pairs bonded`,
+      )
+      // Phase 2 hangs the helix palette off this.
+      element.dataset.level = String(value)
+    },
+
+    setPoints(value) {
+      points.textContent = value.toLocaleString()
+    },
+
+    evolve(value, organism) {
+      // The organism the run just *became* is the one after the genome that
+      // completed, which setEvolution paints on the next round event.
+      banner.textContent = `${organism} → ${organismFor(value + 1).name}`
+      element.classList.remove('is-evolving')
+      void element.offsetWidth
+      element.classList.add('is-evolving')
+      window.setTimeout(() => {
+        element.classList.remove('is-evolving')
+      }, TIMING.nextRoundDelayMs)
     },
 
     setStatus(text, tone) {
@@ -370,14 +433,21 @@ export function createGameOverScreen({
 
   const heading = document.createElement('h2')
   heading.className = 'over__heading'
-  heading.textContent = stats.level === 0 ? 'Out of lives' : 'Run over'
+  heading.textContent = stats.rounds === 0 ? 'Out of lives' : 'Run over'
 
   const score = document.createElement('p')
   score.className = 'over__score'
   score.innerHTML =
-    stats.level === 0
-      ? 'No levels cleared'
-      : `Level <strong>${stats.level}</strong>`
+    stats.rounds === 0
+      ? 'No rounds cleared'
+      : `<strong>${stats.points.toLocaleString()}</strong> points`
+
+  const reached = document.createElement('p')
+  reached.className = 'over__reached'
+  reached.textContent =
+    stats.rounds === 0
+      ? 'Still a single cell'
+      : `Level ${stats.level} · ${stats.organism} · ${stats.rounds} ${stats.rounds === 1 ? 'round' : 'rounds'}`
 
   const modeTag = document.createElement('p')
   modeTag.className = 'over__mode'
@@ -422,9 +492,9 @@ export function createGameOverScreen({
     'Tap anywhere to play again.',
   )
 
-  element.append(heading, score, modeTag, statList)
+  element.append(heading, score, reached, modeTag, statList)
   // A run that cleared nothing has nothing to submit.
-  if (stats.level > 0) element.append(createSubmitForm())
+  if (stats.rounds > 0) element.append(createSubmitForm())
   element.append(actions, hint)
 
   /** Save-this-run form. Prefilled, so a mouse-only player can just click. */
@@ -485,7 +555,9 @@ export function createGameOverScreen({
         .submit({
           nickname,
           mode: stats.mode,
+          points: stats.points,
           level: stats.level,
+          rounds: stats.rounds,
           avgReactionMs: stats.avgReactionMs,
           fastestInputMs: stats.fastestInputMs,
           totalInputs: stats.totalInputs,
@@ -810,13 +882,13 @@ function createEntryRow(
   name.className = 'entry__name'
   name.textContent = entry.nickname
 
-  const level = document.createElement('span')
-  level.className = 'entry__level'
-  level.textContent = `L${entry.level}`
+  const points = document.createElement('span')
+  points.className = 'entry__points'
+  points.textContent = entry.points.toLocaleString()
 
   const reaction = document.createElement('span')
   reaction.className = 'entry__reaction'
-  reaction.textContent = `${entry.avgReactionMs} ms avg`
+  reaction.textContent = `L${entry.level} ${organismFor(entry.level).name} · ${entry.rounds} rounds · ${entry.avgReactionMs} ms`
   reaction.title = `fastest ${entry.fastestInputMs} ms · ${entry.totalInputs} inputs · ${(entry.runDurationMs / 1000).toFixed(1)} s`
 
   const when = document.createElement('time')
@@ -826,7 +898,7 @@ function createEntryRow(
   when.textContent = relativeTime(entry.achievedAt)
   when.title = absoluteTime(entry.achievedAt)
 
-  row.append(position, name, level, reaction, when)
+  row.append(position, name, points, reaction, when)
 
   const labels = labelsFor(entry, {
     firstRunOfSession: options.firstRunOfSession,
@@ -849,6 +921,8 @@ function createEntryRow(
 function statRows(stats: RunStats): ReadonlyArray<readonly [string, string]> {
   if (stats.totalInputs === 0) return [['Inputs', '0']]
   return [
+    ['Rounds', String(stats.rounds)],
+    ['Base pairs', String(stats.basePairs)],
     ['Avg reaction', `${stats.avgReactionMs} ms`],
     ['Fastest', `${stats.fastestInputMs} ms`],
     ['Inputs', String(stats.totalInputs)],
