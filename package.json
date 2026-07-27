@@ -5,11 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "node --watch server/index.ts",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "serve": "node server/index.ts",
+    "start": "npm run build && npm run serve",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^24.10.1",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
   }

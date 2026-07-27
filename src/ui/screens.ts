@@ -8,8 +8,10 @@
 import { MODES, getMode, type ModeDef, type SymbolId } from '../game/modes.ts'
 import type { RunStats } from '../game/engine.ts'
 import {
+  DEFAULT_WINDOW,
   NICKNAME_MAX,
   NICKNAME_MIN,
+  TIME_WINDOWS,
   absoluteTime,
   isValidNickname,
   labelsFor,
@@ -17,8 +19,10 @@ import {
   readLastNickname,
   relativeTime,
   rememberNickname,
+  timeWindowLabel,
   type Entry,
   type LeaderboardProvider,
+  type TimeWindow,
 } from '../leaderboard/index.ts'
 import { createBoard, type Board } from './board.ts'
 import type { Tones } from './audio.ts'
@@ -450,7 +454,11 @@ export function createGameOverScreen({
 
       save.disabled = true
       input.disabled = true
+      save.textContent = 'Saving…'
+      delete note.dataset.error
+      note.textContent = 'Sending your run to the board…'
       rememberNickname(nickname)
+
       void provider
         .submit({
           nickname,
@@ -461,11 +469,16 @@ export function createGameOverScreen({
           totalInputs: stats.totalInputs,
           runDurationMs: stats.runDurationMs,
         })
-        .then((entry) => onShowLeaderboard(entry.achievedAt))
-        .catch(() => {
+        .then((result) => onShowLeaderboard(result.entry.id))
+        .catch((error: unknown) => {
+          // The run is not lost — the form comes back so it can be retried.
           save.disabled = false
           input.disabled = false
-          note.textContent = "Couldn't save that run"
+          save.textContent = 'Save'
+          note.textContent =
+            error instanceof Error
+              ? `Couldn't save: ${error.message}`
+              : "Couldn't save that run"
           note.dataset.error = 'true'
         })
     })
@@ -537,9 +550,11 @@ export interface LeaderboardScreenOptions {
   readonly provider: LeaderboardProvider
   /** Which board to open on. */
   readonly mode: ModeDef
+  /** Which period to open on. Defaults to the shared default window. */
+  readonly initialWindow?: TimeWindow
   readonly onBack: () => void
   readonly tones: Tones
-  /** `achievedAt` of a run just saved, highlighted in the list. */
+  /** `id` of a run just saved, highlighted in the list. */
   readonly highlight?: string
   readonly firstRunOfSession?: boolean
 }
@@ -547,6 +562,7 @@ export interface LeaderboardScreenOptions {
 export function createLeaderboardScreen({
   provider,
   mode,
+  initialWindow,
   onBack,
   tones,
   highlight,
@@ -556,7 +572,9 @@ export function createLeaderboardScreen({
   element.className = 'screen screen--board'
 
   let shown = mode
+  let shownWindow: TimeWindow = initialWindow ?? DEFAULT_WINDOW
   let cancelled = false
+  let requestId = 0
 
   const title = document.createElement('h2')
   title.className = 'board-title'
@@ -567,7 +585,7 @@ export function createLeaderboardScreen({
   const note = document.createElement('p')
   note.className = 'hint'
   note.textContent =
-    'Kept on this machine only. Ranked per mode — the two are never merged.'
+    'Everyone who plays this server. Ranked per mode — the two are never merged.'
 
   const tabs = document.createElement('div')
   tabs.className = 'tabs'
@@ -579,9 +597,24 @@ export function createLeaderboardScreen({
     tab.className = 'tab'
     tab.role = 'tab'
     tab.textContent = candidate.name
-    tab.addEventListener('click', () => select(candidate))
+    tab.addEventListener('click', () => select(candidate, shownWindow))
     tabs.append(tab)
     return { mode: candidate, tab }
+  })
+
+  const windows = document.createElement('div')
+  windows.className = 'tabs tabs--window'
+  windows.setAttribute('role', 'tablist')
+
+  const windowButtons = TIME_WINDOWS.map((candidate) => {
+    const tab = document.createElement('button')
+    tab.type = 'button'
+    tab.className = 'tab tab--window'
+    tab.role = 'tab'
+    tab.textContent = candidate.label
+    tab.addEventListener('click', () => select(shown, candidate.id))
+    windows.append(tab)
+    return { id: candidate.id, tab }
   })
 
   const list = document.createElement('ol')
@@ -601,42 +634,87 @@ export function createLeaderboardScreen({
 
   const hint = document.createElement('p')
   hint.className = 'hint'
-  hint.innerHTML = '<kbd>←</kbd><kbd>→</kbd> switch mode · <kbd>esc</kbd> back'
+  hint.innerHTML =
+    '<kbd>←</kbd><kbd>→</kbd> mode · <kbd>↑</kbd><kbd>↓</kbd> period · <kbd>esc</kbd> back'
 
-  element.append(title, note, tabs, list, controls, hint)
+  element.append(title, note, tabs, windows, list, controls, hint)
 
-  function select(next: ModeDef): void {
-    shown = next
+  function select(nextMode: ModeDef, nextWindow: TimeWindow): void {
+    shown = nextMode
+    shownWindow = nextWindow
+
     for (const { mode: candidate, tab } of tabButtons) {
-      const active = candidate.id === next.id
+      const active = candidate.id === nextMode.id
       tab.classList.toggle('is-active', active)
       tab.setAttribute('aria-selected', String(active))
     }
+    for (const { id, tab } of windowButtons) {
+      const active = id === nextWindow
+      tab.classList.toggle('is-active', active)
+      tab.setAttribute('aria-selected', String(active))
+    }
+
     void load()
   }
 
   async function load(): Promise<void> {
     const forMode = shown
-    const entries = await provider.top(forMode.id)
-    // A tab switch while this was in flight wins.
-    if (cancelled || forMode.id !== shown.id) return
-    renderEntries(entries)
+    const forWindow = shownWindow
+    // Each request gets a ticket; only the newest one is allowed to render.
+    requestId += 1
+    const ticket = requestId
+
+    renderMessage('Loading…', 'loading')
+
+    try {
+      const entries = await provider.top(forMode.id, forWindow)
+      if (cancelled || ticket !== requestId) return
+      renderEntries(entries)
+    } catch (error) {
+      if (cancelled || ticket !== requestId) return
+      // An empty board and an unreachable board must not look the same.
+      renderMessage(
+        error instanceof Error ? error.message : "can't reach the board",
+        'error',
+        () => void load(),
+      )
+    }
+  }
+
+  function renderMessage(
+    text: string,
+    tone: 'loading' | 'error' | 'empty',
+    retry?: () => void,
+  ): void {
+    list.replaceChildren()
+    const message = document.createElement('p')
+    message.className = 'entries__message'
+    message.dataset.tone = tone
+    message.textContent = text
+    list.append(message)
+
+    if (retry) {
+      const again = document.createElement('button')
+      again.type = 'button'
+      again.className = 'btn btn--ghost'
+      again.textContent = 'Try again'
+      again.addEventListener('click', retry)
+      list.append(again)
+    }
   }
 
   function renderEntries(entries: readonly Entry[]): void {
-    list.replaceChildren()
-
     if (entries.length === 0) {
-      const empty = document.createElement('p')
-      empty.className = 'entries__empty'
-      empty.textContent = 'No runs yet. The board fills as you play.'
-      list.append(empty)
+      renderMessage(
+        `No runs in ${timeWindowLabel(shownWindow).toLowerCase()}. Yours could be first.`,
+        'empty',
+      )
       return
     }
 
+    list.replaceChildren()
     entries.forEach((entry, index) => {
-      const isHighlight =
-        highlight !== undefined && entry.achievedAt === highlight
+      const isHighlight = highlight !== undefined && entry.id === highlight
       list.append(
         createEntryRow(entry, index + 1, {
           highlight: isHighlight,
@@ -652,16 +730,30 @@ export function createLeaderboardScreen({
       onBack()
       return
     }
-    const step =
+
+    const modeStep =
       event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
-    if (step === 0) return
+    if (modeStep !== 0) {
+      event.preventDefault()
+      const at = MODES.findIndex((candidate) => candidate.id === shown.id)
+      select(MODES[(at + modeStep + MODES.length) % MODES.length], shownWindow)
+      return
+    }
+
+    const windowStep =
+      event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
+    if (windowStep === 0) return
     event.preventDefault()
-    const at = MODES.findIndex((candidate) => candidate.id === shown.id)
-    select(MODES[(at + step + MODES.length) % MODES.length])
+    const at = TIME_WINDOWS.findIndex(
+      (candidate) => candidate.id === shownWindow,
+    )
+    const next =
+      TIME_WINDOWS[(at + windowStep + TIME_WINDOWS.length) % TIME_WINDOWS.length]
+    select(shown, next.id)
   }
 
   window.addEventListener('keydown', onKeyDown)
-  select(mode)
+  select(mode, initialWindow ?? DEFAULT_WINDOW)
   queueMicrotask(() => back.focus())
 
   return {

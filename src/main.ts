@@ -58,6 +58,9 @@ function showLeaderboard(mode: ModeDef, highlight?: string): void {
     createLeaderboardScreen({
       provider: leaderboard,
       mode,
+      // A run just saved is minutes old, so open on the window that is certain
+      // to contain it rather than the default one, which might not.
+      initialWindow: highlight === undefined ? undefined : '24h',
       tones,
       highlight,
       firstRunOfSession: runsThisSession === 1,

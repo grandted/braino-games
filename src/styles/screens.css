@@ -389,9 +389,34 @@
   gap: 6px;
 }
 
-.entries__empty {
+.tabs--window {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tab--window {
+  font-size: 11px;
+  padding: 8px 14px;
+  letter-spacing: 0.1em;
+}
+
+.tab--window.is-active {
+  color: var(--bg-sunken);
+  background: var(--text);
+  border-color: var(--text);
+}
+
+.entries__message {
   color: var(--text-dim);
-  padding: 28px 0;
+  padding: 28px 0 12px;
+}
+
+.entries__message[data-tone='error'] {
+  color: var(--danger);
+}
+
+.entries__message[data-tone='loading'] {
+  opacity: 0.7;
 }
 
 .entry {
