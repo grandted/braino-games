@@ -19,6 +19,21 @@ const MASTER_GAIN = 0.16
 const ATTACK_S = 0.008
 const RELEASE_S = 0.07
 
+/**
+ * Cue shapes. Game timing lives in `game/modes.ts`; these are the audio
+ * envelopes, which belong to the sound rather than to the rules.
+ */
+const CUES = {
+  clearFirstHz: 659.25, // E5
+  clearSecondHz: 987.77, // B5
+  clearNoteMs: 90,
+  clearSecondMs: 130,
+  clearGapS: 0.1,
+  missFromHz: 196,
+  missToHz: 65,
+  missMs: 420,
+} as const
+
 export interface Tones {
   readonly muted: boolean
   /** Returns the new muted state. */
@@ -116,12 +131,12 @@ export function createTones(): Tones {
     },
 
     levelClear() {
-      tone(659.25, 90, 'sine') // E5
-      tone(987.77, 130, 'sine', 0.1) // B5
+      tone(CUES.clearFirstHz, CUES.clearNoteMs, 'sine')
+      tone(CUES.clearSecondHz, CUES.clearSecondMs, 'sine', CUES.clearGapS)
     },
 
     miss() {
-      tone(196, 420, 'sawtooth', 0, 65)
+      tone(CUES.missFromHz, CUES.missMs, 'sawtooth', 0, CUES.missToHz)
     },
 
     destroy() {

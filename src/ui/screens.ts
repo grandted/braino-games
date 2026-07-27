@@ -39,9 +39,6 @@ function createMuteButton(tones: Tones): {
   const element = document.createElement('button')
   element.type = 'button'
   element.className = 'btn btn--ghost mute'
-  // Not a game input and not a retry — just a toggle.
-  element.dataset.noInput = ''
-  element.dataset.noRetry = ''
 
   function render(): void {
     element.textContent = tones.muted ? 'sound off' : 'sound on'
@@ -247,7 +244,6 @@ export function createGameScreen({
   const quit = document.createElement('button')
   quit.type = 'button'
   quit.className = 'btn btn--ghost'
-  quit.dataset.noInput = ''
   quit.textContent = 'Menu'
   quit.addEventListener('click', onExit)
 
@@ -380,7 +376,6 @@ export function createGameOverScreen({
   const menu = document.createElement('button')
   menu.type = 'button'
   menu.className = 'btn btn--ghost'
-  menu.dataset.noRetry = ''
   menu.textContent = 'Menu'
   menu.addEventListener('click', onMenu)
 
@@ -389,7 +384,6 @@ export function createGameOverScreen({
   const boardButton = document.createElement('button')
   boardButton.type = 'button'
   boardButton.className = 'btn btn--ghost'
-  boardButton.dataset.noRetry = ''
   boardButton.textContent = provider.label
   boardButton.addEventListener('click', () => onShowLeaderboard())
 
@@ -410,9 +404,9 @@ export function createGameOverScreen({
   /** Save-this-run form. Prefilled, so a mouse-only player can just click. */
   function createSubmitForm(): HTMLFormElement {
     const form = document.createElement('form')
+    // The .submit class is load-bearing: the retry fallback keys off it so
+    // typing a nickname is never read as "play again".
     form.className = 'submit'
-    // Typing in here must not be read as the one input that retries.
-    form.dataset.noRetry = ''
 
     const label = document.createElement('label')
     label.className = 'submit__label'
@@ -479,17 +473,28 @@ export function createGameOverScreen({
     return form
   }
 
-  // Retry must cost exactly one input, whichever device the player is on.
+  // Retry must cost exactly one input, whichever device the player is on:
+  // any key, or a click anywhere that isn't a control.
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Tab' || MODIFIER_KEYS.has(event.key)) return
     // 'm' belongs to the mute toggle on every screen, this one included.
     if (event.key === 'm' || event.key === 'M') return
-    // Focus inside the submit form (or on any control that isn't Retry) means
-    // the player is typing a nickname or aiming at a button, not retrying.
-    const focused = document.activeElement
-    if (focused instanceof HTMLElement && focused.closest('[data-no-retry]')) {
+
+    const focused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    // Typing a nickname is not a retry.
+    if (focused?.closest('.submit')) return
+    // Enter and space belong to whichever button has focus — Retry is focused
+    // by default, so this is still one key to play again, just via the button.
+    if (
+      (event.key === 'Enter' || event.key === ' ') &&
+      focused?.closest('button')
+    ) {
       return
     }
+
     event.preventDefault()
     if (event.repeat) return
     if (event.key === 'Escape') onMenu()
@@ -498,7 +503,9 @@ export function createGameOverScreen({
 
   function onMouseDown(event: MouseEvent): void {
     const target = event.target as HTMLElement | null
-    if (target?.closest('[data-no-retry]')) return
+    // Controls fire their own click handlers; letting the fallback run here
+    // too would retry twice off one press.
+    if (target?.closest('button, .submit')) return
     event.preventDefault()
     onRetry()
   }

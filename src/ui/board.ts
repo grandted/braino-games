@@ -40,7 +40,7 @@ export interface BoardOptions {
    * The play area for mouse purposes — defaults to the pad itself. The game
    * screen passes its whole root so a click that lands just off a pad still
    * counts, and so no right-click anywhere in the round opens a browser menu.
-   * Controls marked `data-no-input` (the menu button) stay clickable.
+   * Buttons inside it stay clickable.
    */
   readonly surface?: HTMLElement
 }
@@ -75,7 +75,8 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
 
   function onMouseDown(event: MouseEvent): void {
     const target = event.target as HTMLElement | null
-    if (target?.closest('[data-no-input]')) return
+    // Buttons activate themselves — a click on one is never a game input.
+    if (target?.closest('button')) return
 
     // In clicks mode the button itself is the symbol, wherever it lands in
     // the play area. In arrows mode the pad you hit is the symbol.
