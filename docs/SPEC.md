@@ -190,7 +190,7 @@ Explicitly deferred. Do not build these:
 - [x] Both modes playable start to finish
 - [x] Fully playable keyboard-only; fully playable mouse-only
 - [x] Retry from gameover in one input
-- [ ] Local leaderboard writes, reads, sorts, and displays per mode
+- [x] Local leaderboard writes, reads, sorts, and displays per mode
 - [x] Tones play, mute toggle persists
 - [x] `npm run build` clean, `npm run typecheck` clean
 - [ ] No console errors across a full run in both modes

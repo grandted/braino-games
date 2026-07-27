@@ -5,8 +5,21 @@
  * is operable with the keyboard alone and with the mouse alone.
  */
 
-import { MODES, type ModeDef, type SymbolId } from '../game/modes.ts'
+import { MODES, getMode, type ModeDef, type SymbolId } from '../game/modes.ts'
 import type { RunStats } from '../game/engine.ts'
+import {
+  NICKNAME_MAX,
+  NICKNAME_MIN,
+  absoluteTime,
+  isValidNickname,
+  labelsFor,
+  normaliseNickname,
+  readLastNickname,
+  relativeTime,
+  rememberNickname,
+  type Entry,
+  type LeaderboardProvider,
+} from '../leaderboard/index.ts'
 import { createBoard, type Board } from './board.ts'
 import type { Tones } from './audio.ts'
 
@@ -64,10 +77,17 @@ function createMuteButton(tones: Tones): {
 
 export interface MenuScreenOptions {
   readonly onPick: (mode: ModeDef) => void
+  readonly onShowLeaderboard: () => void
   readonly tones: Tones
+  readonly leaderboardLabel: string
 }
 
-export function createMenuScreen({ onPick, tones }: MenuScreenOptions): Screen {
+export function createMenuScreen({
+  onPick,
+  onShowLeaderboard,
+  tones,
+  leaderboardLabel,
+}: MenuScreenOptions): Screen {
   const element = document.createElement('section')
   element.className = 'screen screen--menu'
 
@@ -115,7 +135,17 @@ export function createMenuScreen({ onPick, tones }: MenuScreenOptions): Screen {
 
   const mute = createMuteButton(tones)
 
-  element.append(title, subtitle, list, hint, mute.element)
+  const board = document.createElement('button')
+  board.type = 'button'
+  board.className = 'btn btn--ghost'
+  board.textContent = leaderboardLabel
+  board.addEventListener('click', onShowLeaderboard)
+
+  const controls = document.createElement('div')
+  controls.className = 'controls'
+  controls.append(board, mute.element)
+
+  element.append(title, subtitle, list, hint, controls)
 
   // Roving focus so arrow keys work as well as tab.
   function onKeyDown(event: KeyboardEvent): void {
@@ -298,6 +328,9 @@ export interface GameOverScreenOptions {
   readonly stats: RunStats
   readonly onRetry: () => void
   readonly onMenu: () => void
+  /** `highlight` is the achievedAt of a run just saved, if any. */
+  readonly onShowLeaderboard: (highlight?: string) => void
+  readonly provider: LeaderboardProvider
   readonly tones: Tones
 }
 
@@ -306,6 +339,8 @@ export function createGameOverScreen({
   stats,
   onRetry,
   onMenu,
+  onShowLeaderboard,
+  provider,
   tones,
 }: GameOverScreenOptions): Screen {
   const element = document.createElement('section')
@@ -351,22 +386,110 @@ export function createGameOverScreen({
 
   const mute = createMuteButton(tones)
 
+  const boardButton = document.createElement('button')
+  boardButton.type = 'button'
+  boardButton.className = 'btn btn--ghost'
+  boardButton.dataset.noRetry = ''
+  boardButton.textContent = provider.label
+  boardButton.addEventListener('click', () => onShowLeaderboard())
+
   const actions = document.createElement('div')
   actions.className = 'over__actions'
-  actions.append(retry, menu, mute.element)
+  actions.append(retry, menu, boardButton, mute.element)
 
   const hint = document.createElement('p')
   hint.className = 'hint'
   hint.innerHTML =
     'Any key or click to retry · <kbd>esc</kbd> for the menu · <kbd>m</kbd> mutes'
 
-  element.append(heading, score, modeTag, statList, actions, hint)
+  element.append(heading, score, modeTag, statList)
+  // A run that cleared nothing has nothing to submit.
+  if (stats.level > 0) element.append(createSubmitForm())
+  element.append(actions, hint)
+
+  /** Save-this-run form. Prefilled, so a mouse-only player can just click. */
+  function createSubmitForm(): HTMLFormElement {
+    const form = document.createElement('form')
+    form.className = 'submit'
+    // Typing in here must not be read as the one input that retries.
+    form.dataset.noRetry = ''
+
+    const label = document.createElement('label')
+    label.className = 'submit__label'
+    label.htmlFor = 'nickname'
+    label.textContent = `Save to ${provider.label.toLowerCase()}`
+
+    const input = document.createElement('input')
+    input.id = 'nickname'
+    input.className = 'submit__input'
+    input.type = 'text'
+    input.autocomplete = 'off'
+    input.spellcheck = false
+    input.minLength = NICKNAME_MIN
+    input.maxLength = NICKNAME_MAX
+    input.placeholder = 'nickname'
+    input.value = readLastNickname()
+
+    const save = document.createElement('button')
+    save.type = 'submit'
+    save.className = 'btn'
+    save.textContent = 'Save'
+
+    const note = document.createElement('p')
+    note.className = 'submit__note'
+    note.textContent = `${NICKNAME_MIN}–${NICKNAME_MAX} characters`
+
+    const row = document.createElement('div')
+    row.className = 'submit__row'
+    row.append(input, save)
+    form.append(label, row, note)
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault()
+      const nickname = normaliseNickname(input.value)
+      if (!isValidNickname(nickname)) {
+        note.textContent = `Nickname needs ${NICKNAME_MIN}–${NICKNAME_MAX} characters`
+        note.dataset.error = 'true'
+        input.focus()
+        return
+      }
+
+      save.disabled = true
+      input.disabled = true
+      rememberNickname(nickname)
+      void provider
+        .submit({
+          nickname,
+          mode: stats.mode,
+          level: stats.level,
+          avgReactionMs: stats.avgReactionMs,
+          fastestInputMs: stats.fastestInputMs,
+          totalInputs: stats.totalInputs,
+          runDurationMs: stats.runDurationMs,
+        })
+        .then((entry) => onShowLeaderboard(entry.achievedAt))
+        .catch(() => {
+          save.disabled = false
+          input.disabled = false
+          note.textContent = "Couldn't save that run"
+          note.dataset.error = 'true'
+        })
+    })
+
+    return form
+  }
 
   // Retry must cost exactly one input, whichever device the player is on.
   function onKeyDown(event: KeyboardEvent): void {
     if (event.key === 'Tab' || MODIFIER_KEYS.has(event.key)) return
     // 'm' belongs to the mute toggle on every screen, this one included.
     if (event.key === 'm' || event.key === 'M') return
+    // Focus inside the submit form (or on any control that isn't Retry) means
+    // the player is typing a nickname or aiming at a button, not retrying.
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement && focused.closest('[data-no-retry]')) {
+      return
+    }
     event.preventDefault()
     if (event.repeat) return
     if (event.key === 'Escape') onMenu()
@@ -399,6 +522,207 @@ export function createGameOverScreen({
       element.remove()
     },
   }
+}
+
+/* Leaderboard ------------------------------------------------------------- */
+
+export interface LeaderboardScreenOptions {
+  readonly provider: LeaderboardProvider
+  /** Which board to open on. */
+  readonly mode: ModeDef
+  readonly onBack: () => void
+  readonly tones: Tones
+  /** `achievedAt` of a run just saved, highlighted in the list. */
+  readonly highlight?: string
+  readonly firstRunOfSession?: boolean
+}
+
+export function createLeaderboardScreen({
+  provider,
+  mode,
+  onBack,
+  tones,
+  highlight,
+  firstRunOfSession,
+}: LeaderboardScreenOptions): Screen {
+  const element = document.createElement('section')
+  element.className = 'screen screen--board'
+
+  let shown = mode
+  let cancelled = false
+
+  const title = document.createElement('h2')
+  title.className = 'board-title'
+  title.textContent = provider.label
+
+  // Boards are per mode and never merged: a level-10 clicks run is not a
+  // level-10 arrows run. Say so rather than letting the tabs imply otherwise.
+  const note = document.createElement('p')
+  note.className = 'hint'
+  note.textContent =
+    'Kept on this machine only. Ranked per mode — the two are never merged.'
+
+  const tabs = document.createElement('div')
+  tabs.className = 'tabs'
+  tabs.setAttribute('role', 'tablist')
+
+  const tabButtons = MODES.map((candidate) => {
+    const tab = document.createElement('button')
+    tab.type = 'button'
+    tab.className = 'tab'
+    tab.role = 'tab'
+    tab.textContent = candidate.name
+    tab.addEventListener('click', () => select(candidate))
+    tabs.append(tab)
+    return { mode: candidate, tab }
+  })
+
+  const list = document.createElement('ol')
+  list.className = 'entries'
+
+  const back = document.createElement('button')
+  back.type = 'button'
+  back.className = 'btn'
+  back.textContent = 'Back'
+  back.addEventListener('click', onBack)
+
+  const mute = createMuteButton(tones)
+
+  const controls = document.createElement('div')
+  controls.className = 'controls'
+  controls.append(back, mute.element)
+
+  const hint = document.createElement('p')
+  hint.className = 'hint'
+  hint.innerHTML = '<kbd>←</kbd><kbd>→</kbd> switch mode · <kbd>esc</kbd> back'
+
+  element.append(title, note, tabs, list, controls, hint)
+
+  function select(next: ModeDef): void {
+    shown = next
+    for (const { mode: candidate, tab } of tabButtons) {
+      const active = candidate.id === next.id
+      tab.classList.toggle('is-active', active)
+      tab.setAttribute('aria-selected', String(active))
+    }
+    void load()
+  }
+
+  async function load(): Promise<void> {
+    const forMode = shown
+    const entries = await provider.top(forMode.id)
+    // A tab switch while this was in flight wins.
+    if (cancelled || forMode.id !== shown.id) return
+    renderEntries(entries)
+  }
+
+  function renderEntries(entries: readonly Entry[]): void {
+    list.replaceChildren()
+
+    if (entries.length === 0) {
+      const empty = document.createElement('p')
+      empty.className = 'entries__empty'
+      empty.textContent = 'No runs yet. The board fills as you play.'
+      list.append(empty)
+      return
+    }
+
+    entries.forEach((entry, index) => {
+      const isHighlight =
+        highlight !== undefined && entry.achievedAt === highlight
+      list.append(
+        createEntryRow(entry, index + 1, {
+          highlight: isHighlight,
+          firstRunOfSession: isHighlight && firstRunOfSession,
+        }),
+      )
+    })
+  }
+
+  function onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onBack()
+      return
+    }
+    const step =
+      event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+    if (step === 0) return
+    event.preventDefault()
+    const at = MODES.findIndex((candidate) => candidate.id === shown.id)
+    select(MODES[(at + step + MODES.length) % MODES.length])
+  }
+
+  window.addEventListener('keydown', onKeyDown)
+  select(mode)
+  queueMicrotask(() => back.focus())
+
+  return {
+    element,
+    destroy() {
+      cancelled = true
+      window.removeEventListener('keydown', onKeyDown)
+      mute.destroy()
+      element.remove()
+    },
+  }
+}
+
+function createEntryRow(
+  entry: Entry,
+  rank: number,
+  options: { highlight: boolean; firstRunOfSession?: boolean },
+): HTMLLIElement {
+  const row = document.createElement('li')
+  row.className = options.highlight ? 'entry is-you' : 'entry'
+  // Accent each row with its mode's first symbol colour.
+  row.style.setProperty(
+    '--sym',
+    `var(${getMode(entry.mode).symbols[0].colorVar})`,
+  )
+
+  const position = document.createElement('span')
+  position.className = 'entry__rank'
+  position.textContent = String(rank)
+
+  const name = document.createElement('span')
+  name.className = 'entry__name'
+  name.textContent = entry.nickname
+
+  const level = document.createElement('span')
+  level.className = 'entry__level'
+  level.textContent = `L${entry.level}`
+
+  const reaction = document.createElement('span')
+  reaction.className = 'entry__reaction'
+  reaction.textContent = `${entry.avgReactionMs} ms avg`
+  reaction.title = `fastest ${entry.fastestInputMs} ms · ${entry.totalInputs} inputs · ${(entry.runDurationMs / 1000).toFixed(1)} s`
+
+  const when = document.createElement('time')
+  when.className = 'entry__when'
+  when.dateTime = entry.achievedAt
+  // Relative reads faster; absolute is the one you can actually trust.
+  when.textContent = relativeTime(entry.achievedAt)
+  when.title = absoluteTime(entry.achievedAt)
+
+  row.append(position, name, level, reaction, when)
+
+  const labels = labelsFor(entry, {
+    firstRunOfSession: options.firstRunOfSession,
+  })
+  if (labels.length > 0) {
+    const tags = document.createElement('span')
+    tags.className = 'entry__labels'
+    for (const label of labels) {
+      const tag = document.createElement('span')
+      tag.className = 'tag'
+      tag.textContent = label
+      tags.append(tag)
+    }
+    row.append(tags)
+  }
+
+  return row
 }
 
 function statRows(stats: RunStats): ReadonlyArray<readonly [string, string]> {

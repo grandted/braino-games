@@ -3,11 +3,13 @@ import './styles/board.css'
 import './styles/screens.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
-import { RULES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
+import { MODES, RULES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
+import { createLeaderboard } from './leaderboard/index.ts'
 import { createTones } from './ui/audio.ts'
 import {
   createGameOverScreen,
   createGameScreen,
+  createLeaderboardScreen,
   createMenuScreen,
   type GameScreen,
   type Screen,
@@ -21,6 +23,10 @@ function mountPoint(): HTMLElement {
 
 const app = mountPoint()
 const tones = createTones()
+const leaderboard = createLeaderboard()
+
+/** For the "one and done" label: was the run just saved the session's first? */
+let runsThisSession = 0
 
 let current: Screen | null = null
 let leaveCurrent: (() => void) | null = null
@@ -34,8 +40,30 @@ function show(screen: Screen, onLeave?: () => void): void {
   app.append(screen.element)
 }
 
+let lastMode: ModeDef = MODES[0]
+
 function showMenu(): void {
-  show(createMenuScreen({ onPick: playMode, tones }))
+  show(
+    createMenuScreen({
+      onPick: playMode,
+      onShowLeaderboard: () => showLeaderboard(lastMode),
+      tones,
+      leaderboardLabel: leaderboard.label,
+    }),
+  )
+}
+
+function showLeaderboard(mode: ModeDef, highlight?: string): void {
+  show(
+    createLeaderboardScreen({
+      provider: leaderboard,
+      mode,
+      tones,
+      highlight,
+      firstRunOfSession: runsThisSession === 1,
+      onBack: showMenu,
+    }),
+  )
 }
 
 function showGameOver(mode: ModeDef, stats: RunStats): void {
@@ -44,8 +72,10 @@ function showGameOver(mode: ModeDef, stats: RunStats): void {
       mode,
       stats,
       tones,
+      provider: leaderboard,
       onRetry: () => playMode(mode),
       onMenu: showMenu,
+      onShowLeaderboard: (highlight) => showLeaderboard(mode, highlight),
     }),
   )
 }
@@ -56,6 +86,8 @@ function livesLabel(count: number): string {
 
 function playMode(mode: ModeDef): void {
   let screen: GameScreen
+  lastMode = mode
+  runsThisSession += 1
 
   const engine = new Engine({ mode, emit: (event) => render(event) })
 

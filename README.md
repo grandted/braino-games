@@ -34,7 +34,9 @@ Speed increases with level. There's no time limit on your inputs.
 You get three lives. A wrong input spends one and replays the same level
 — same sequence, another go at it. The third miss ends the run.
 
-Scores are ranked by level reached, then by average reaction time.
+Scores are ranked by level reached, then by average reaction time. The
+board is per mode and never merged — a level-10 clicks run is not a
+level-10 arrows run.
 
 ## Status
 
