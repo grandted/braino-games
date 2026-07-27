@@ -1,0 +1,144 @@
+/* The pad. --sym is set per-pad by board.ts to that symbol's colour. */
+
+.board {
+  display: grid;
+  gap: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 160ms ease;
+}
+
+.board--cluster {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    '.    up    .    '
+    'left down  right';
+}
+
+.pad--up {
+  grid-area: up;
+}
+.pad--left {
+  grid-area: left;
+}
+.pad--down {
+  grid-area: down;
+}
+.pad--right {
+  grid-area: right;
+}
+
+.board--split {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+
+/* Locked = playback running. Input is swallowed, and it looks it. */
+.board--locked {
+  cursor: not-allowed;
+}
+
+.board--locked .pad {
+  border-color: var(--line);
+}
+
+.pad {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  border: 3px solid color-mix(in srgb, var(--sym) 35%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--sym) 8%, var(--bg-raised));
+  color: color-mix(in srgb, var(--sym) 70%, var(--text-dim));
+  transition:
+    transform 90ms ease,
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+}
+
+.board--cluster .pad {
+  width: clamp(74px, 20vw, 116px);
+  aspect-ratio: 1;
+}
+
+.board--split .pad {
+  width: clamp(120px, 34vw, 210px);
+  aspect-ratio: 4 / 3;
+}
+
+.pad__glyph {
+  font-size: clamp(32px, 8vw, 52px);
+  line-height: 1;
+  font-weight: 700;
+}
+
+.pad__label {
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+/* Lit — playback flash and input confirm share the look, not the timing. */
+.pad--lit {
+  background: var(--sym);
+  border-color: var(--sym);
+  color: var(--bg-sunken);
+  box-shadow:
+    0 0 0 6px color-mix(in srgb, var(--sym) 22%, transparent),
+    0 0 44px color-mix(in srgb, var(--sym) 55%, transparent);
+}
+
+.pad--playback {
+  animation: pad-pop 140ms ease-out;
+}
+
+.pad--pressed {
+  transform: translateY(3px) scale(0.97);
+}
+
+.pad--miss {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 22%, var(--bg-raised));
+  color: var(--danger);
+  animation: pad-miss 420ms ease-out;
+}
+
+@keyframes pad-pop {
+  from {
+    transform: scale(1);
+  }
+  55% {
+    transform: scale(1.07);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes pad-miss {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  25%,
+  75% {
+    opacity: 0.35;
+  }
+}
+
+/* Motion is decoration here; the colour change carries the information. */
+@media (prefers-reduced-motion: reduce) {
+  .pad--playback,
+  .pad--miss {
+    animation: none;
+  }
+
+  .pad--pressed {
+    transform: none;
+    opacity: 0.75;
+  }
+}
