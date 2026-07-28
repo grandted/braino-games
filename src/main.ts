@@ -108,6 +108,8 @@ function playMode(mode: ModeDef): void {
         // The strand hangs still while the sequence plays, and spins up when
         // it is the player's turn — the locked state, made visible.
         screen.helix.setLive(event.phase === 'input')
+        // The bed drops under playback so the pattern sits on top of the mix.
+        tones.duck(event.phase === 'playback')
         if (event.phase === 'playback') screen.setStatus('watch', 'watch')
         else if (event.phase === 'input') screen.setStatus('your turn', 'go')
         else if (event.phase === 'paused')
@@ -130,7 +132,7 @@ function playMode(mode: ModeDef): void {
       case 'roundClear':
         screen.setStatus(`clear · +${event.points.toLocaleString()}`, 'good')
         screen.setPoints(event.totalPoints)
-        tones.roundClear()
+        tones.roundClear(event.round)
         break
       case 'evolve':
         // The Tetris moment: a genome completed, so the run changes species.
@@ -138,6 +140,7 @@ function playMode(mode: ModeDef): void {
         screen.setPoints(event.totalPoints)
         screen.evolve(event.level, event.organism)
         tones.evolve()
+        tones.setAmbienceLevel(event.level + 1)
         break
       case 'lives':
         screen.setLives(event.left, event.max)
@@ -147,7 +150,7 @@ function playMode(mode: ModeDef): void {
         screen.setLives(event.left, event.max)
         screen.setStatus(`round ${event.round} · extra life`, 'good')
         screen.celebrate()
-        tones.evolve()
+        tones.freeLife()
         break
       case 'reject': {
         const expected = getSymbol(mode, event.expected).name
@@ -166,6 +169,8 @@ function playMode(mode: ModeDef): void {
         break
       }
       case 'gameOver':
+        tones.stopAmbience()
+        tones.gameOver()
         showGameOver(mode, event.stats)
         break
       // flashOff and playbackEnd need no rendering — pads unlight themselves
@@ -183,6 +188,7 @@ function playMode(mode: ModeDef): void {
   // We're inside the click or keypress that picked the mode, which is the
   // only moment a browser will let an AudioContext start.
   tones.resume()
+  tones.startAmbience(mode)
   screen = createGameScreen({
     mode,
     tones,
@@ -192,6 +198,8 @@ function playMode(mode: ModeDef): void {
   screen.setPoints(0)
   show(screen, () => {
     engine.stop()
+    // Leaving mid-run (quit, or a retry) must take the bed with it.
+    tones.stopAmbience()
     window.removeEventListener('blur', onBlur)
     window.removeEventListener('focus', onFocus)
   })

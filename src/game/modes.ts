@@ -25,6 +25,12 @@ export interface SymbolDef {
   readonly colorVar: string
   /** Tone pitch in Hz. Low pitches sit low on the pad, high sit high. */
   readonly toneHz: number
+  /**
+   * Stereo position, -1 to 1, matching where the symbol sits on the pad.
+   * Hearing left on the left is not decoration: pairing a sound with a
+   * direction is another handle for recall, which is the point of the game.
+   */
+  readonly pan: number
   /** `KeyboardEvent.key` values that trigger this symbol. */
   readonly keys: readonly string[]
   /** `MouseEvent.button` that triggers it anywhere in the play area. */
@@ -37,6 +43,13 @@ export interface ModeDef {
   readonly tagline: string
   /** How board.ts arranges the pads. */
   readonly layout: 'cluster' | 'split'
+  /**
+   * Root of the ambient bed, chosen to sit under this mode's symbol pitches.
+   * Arrows are E-G-B-D, so the bed is an E; clicks are A-E, so it is an A.
+   * Symbol pitches never transpose — they are the memory anchor — so the bed
+   * has to be the thing that agrees with them.
+   */
+  readonly ambientRootHz: number
   readonly symbols: readonly SymbolDef[]
 }
 
@@ -46,6 +59,7 @@ const ARROWS: ModeDef = {
   // Device-neutral on purpose: on a phone these are four pads, not four keys.
   tagline: 'Four directions. Patterns turn brutal fast.',
   layout: 'cluster',
+  ambientRootHz: 82.41, // E2
   symbols: [
     {
       id: 'up',
@@ -53,6 +67,7 @@ const ARROWS: ModeDef = {
       name: 'up',
       colorVar: '--sym-up',
       toneHz: 587.33, // D5
+      pan: 0,
       keys: ['ArrowUp'],
       mouseButton: null,
     },
@@ -62,6 +77,7 @@ const ARROWS: ModeDef = {
       name: 'left',
       colorVar: '--sym-left',
       toneHz: 392.0, // G4
+      pan: -0.65,
       keys: ['ArrowLeft'],
       mouseButton: null,
     },
@@ -71,6 +87,7 @@ const ARROWS: ModeDef = {
       name: 'down',
       colorVar: '--sym-down',
       toneHz: 329.63, // E4
+      pan: 0,
       keys: ['ArrowDown'],
       mouseButton: null,
     },
@@ -80,6 +97,7 @@ const ARROWS: ModeDef = {
       name: 'right',
       colorVar: '--sym-right',
       toneHz: 493.88, // B4
+      pan: 0.65,
       keys: ['ArrowRight'],
       mouseButton: null,
     },
@@ -91,6 +109,7 @@ const CLICKS: ModeDef = {
   name: 'Clicks',
   tagline: 'Two buttons. Longer runs, a different kind of hard.',
   layout: 'split',
+  ambientRootHz: 110.0, // A2
   symbols: [
     {
       id: 'clickLeft',
@@ -98,6 +117,7 @@ const CLICKS: ModeDef = {
       name: 'left click',
       colorVar: '--sym-click-left',
       toneHz: 440.0, // A4
+      pan: -0.55,
       // Arrow keys keep clicks mode playable without a mouse.
       keys: ['ArrowLeft'],
       mouseButton: 0,
@@ -108,6 +128,7 @@ const CLICKS: ModeDef = {
       name: 'right click',
       colorVar: '--sym-click-right',
       toneHz: 659.25, // E5
+      pan: 0.55,
       keys: ['ArrowRight'],
       mouseButton: 2,
     },
