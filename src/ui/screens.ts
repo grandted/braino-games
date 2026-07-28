@@ -270,12 +270,17 @@ export function createMenuScreen({
 
 /* Game -------------------------------------------------------------------- */
 
+/** Digits kept on screen in a readout mode; the tail, not the head. */
+const READOUT_MAX = 28
+
 export type StatusTone = 'watch' | 'go' | 'good' | 'bad' | 'paused'
 
 export interface GameScreen extends Screen {
   readonly board: Board
   readonly helix: Helix
   setRound(round: number): void
+  /** Digits entered so far, for a mode that spells something out. */
+  setReadout(text: string): void
   /** The organism being solved, and how far into its genome the run is. */
   setEvolution(
     level: number,
@@ -335,6 +340,11 @@ export function createGameScreen({
   const nextUp = document.createElement('p')
   nextUp.className = 'next-up'
 
+  // Pi mode writes out what you have recited so far. Only rendered for a mode
+  // that asked for it — the other three have nothing to spell.
+  const readout = document.createElement('p')
+  readout.className = 'readout'
+
   const organismName = document.createElement('span')
   organismName.className = 'evolution__name'
 
@@ -355,6 +365,7 @@ export function createGameScreen({
   lives.className = 'lives'
 
   header.append(modeTag, points, round, evolution, nextUp, lives, status)
+  if (mode.readout) header.insertBefore(readout, lives)
 
   const progress = document.createElement('div')
   progress.className = 'progress'
@@ -430,6 +441,14 @@ export function createGameScreen({
 
     setRound(value) {
       round.textContent = `Round ${value}`
+    },
+
+    setReadout(text) {
+      // Keep the newest digits visible rather than the oldest. Done here
+      // rather than with `direction: rtl`, which would invite the bidi
+      // algorithm to reorder things around the decimal point.
+      readout.textContent =
+        text.length > READOUT_MAX ? `…${text.slice(-READOUT_MAX)}` : text
     },
 
     setEvolution(value, organism, bonded, genome, hue) {

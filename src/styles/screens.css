@@ -259,6 +259,20 @@
   color: var(--text-dim);
 }
 
+/* Pi mode: what you have recited so far, written out. Tabular figures so the
+   line doesn't shuffle sideways as digits land. */
+.readout {
+  font: 700 clamp(15px, 3.4vw, 20px) / 1 var(--mono);
+  letter-spacing: 0.12em;
+  color: hsl(var(--level-hue) 80% 72%);
+  font-variant-numeric: tabular-nums;
+  min-height: 1em;
+  max-width: 92vw;
+  white-space: nowrap;
+  text-align: center;
+  transition: color 900ms ease;
+}
+
 /* A concrete target, in the unit the player actually controls. */
 .next-up {
   font: 600 11px/1 var(--mono);

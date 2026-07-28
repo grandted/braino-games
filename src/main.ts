@@ -7,6 +7,7 @@ import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
 import { MODES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
 import { createLeaderboard, recordRun } from './leaderboard/index.ts'
 import { organismFor, roundsForLevel } from './game/evolution.ts'
+import { formatPi } from './game/pi.ts'
 import { createTones } from './ui/audio.ts'
 import {
   createGameOverScreen,
@@ -110,6 +111,8 @@ function playMode(mode: ModeDef): void {
       case 'round': {
         screen.setRound(event.round)
         screen.setProgress(0, event.sequence.length)
+        // A readout mode spells out the run; each round starts it again.
+        if (mode.readout) screen.setReadout(formatPi(0))
         paintGenome()
         // A concrete target, in the unit the player actually controls.
         const level = engine.level
@@ -143,6 +146,8 @@ function playMode(mode: ModeDef): void {
         screen.board.pressed(event.symbol)
         tones.play(getSymbol(mode, event.symbol), TIMING.inputFlashMs)
         screen.setProgress(event.index + 1, engine.sequence.length)
+        // Written the way a person writes it: 3.14159
+        if (mode.readout) screen.setReadout(formatPi(event.index + 1))
         // One correct input bonds one base pair of the current genome.
         paintGenome()
         screen.helix.bond(event.symbol)

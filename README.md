@@ -41,8 +41,14 @@ space in the game, and the one where the sound does the most work: a
 cell's column sets its note and which ear it comes from, its row sets the
 octave. Higher on screen is literally higher.
 
-On a phone all three become virtual controls: four thumb pads for Arrows,
-two large ones for Clicks, nine for Grid.
+**Pi** — recite π. Round 1 is `3`, round 2 is `3 1`, round 3 is `3 1 4`,
+and on into `3.14159265…`. Unlike every other mode the sequence never
+changes, so what you learn carries from one run to the next — and if you
+already know π, you can go a very long way. The digits sound a pentatonic
+scale, so the opening plays as a melody.
+
+On a phone all four become virtual controls: four thumb pads for Arrows,
+two large ones for Clicks, nine for Grid, a keypad for Pi.
 
 ## How it works
 

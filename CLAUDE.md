@@ -5,8 +5,10 @@ Context for Claude Code. Read this before making changes.
 ## What this is
 
 **Tangent** — a browser-based muscle-memory game. A sequence of inputs is
-shown, the player repeats it, the sequence grows by one each round. Three
-modes: arrow keys (4 symbols), mouse buttons (2), and a 3×3 grid (9).
+shown, the player repeats it, the sequence grows by one each round. Four
+modes: arrow keys (4 symbols), mouse buttons (2), a 3×3 grid (9), and Pi
+(10 digits, and the only mode whose sequence is fixed rather than
+random — round N is the first N digits of π).
 
 Adding a mode means adding a `ModeDef` to `game/modes.ts` and a layout to
 `styles/board.css`. Everything that enumerates modes — menu cards, digit
@@ -87,6 +89,7 @@ src/
 │   ├── engine.ts        state machine: idle→playback→input→result
 │   ├── sequence.ts      generation + validation
 │   ├── evolution.ts     the organism ladder: genomes, tiers, names
+│   ├── pi.ts            1000 verified digits of π, for Pi mode
 │   ├── scoring.ts       points per round, evolution bonus, server ceiling
 │   └── modes.ts         mode definitions (symbols, keybinds, colors),
 │                        plus TIMING, RULES and SCORING — every tunable

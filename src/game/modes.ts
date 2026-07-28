@@ -5,6 +5,8 @@
  * rather than literals so the palette stays in one place (styles/base.css).
  */
 
+import { PI_DIGITS } from './pi.ts'
+
 export type SymbolId =
   | 'up'
   | 'down'
@@ -22,8 +24,19 @@ export type SymbolId =
   | 'gridSW'
   | 'gridS'
   | 'gridSE'
+  // Pi: one symbol per digit.
+  | 'd0'
+  | 'd1'
+  | 'd2'
+  | 'd3'
+  | 'd4'
+  | 'd5'
+  | 'd6'
+  | 'd7'
+  | 'd8'
+  | 'd9'
 
-export type ModeId = 'arrows' | 'clicks' | 'grid'
+export type ModeId = 'arrows' | 'clicks' | 'grid' | 'pi'
 
 export interface SymbolDef {
   readonly id: SymbolId
@@ -52,7 +65,21 @@ export interface ModeDef {
   readonly name: string
   readonly tagline: string
   /** How board.ts arranges the pads. */
-  readonly layout: 'cluster' | 'split' | 'grid'
+  readonly layout: 'cluster' | 'split' | 'grid' | 'keypad'
+  /**
+   * A sequence this mode always plays, instead of a random one. Pi mode is
+   * the digits of pi: round N is the first N digits, every run, forever.
+   *
+   * That makes it the one mode where knowing the answer in advance is the
+   * entire point — and where practice compounds across runs rather than
+   * within one.
+   */
+  readonly fixedSequence?: readonly SymbolId[]
+  /**
+   * Show the digits entered so far as text, the way a person would write
+   * them. Only meaningful for a mode whose symbols are digits.
+   */
+  readonly readout?: boolean
   /**
    * Root of the ambient bed, chosen to sit under this mode's symbol pitches.
    * Arrows are E-G-B-D, so the bed is an E; clicks are A-E, so it is an A.
@@ -261,7 +288,70 @@ const GRID: ModeDef = {
   ],
 }
 
-export const MODES: readonly ModeDef[] = [ARROWS, CLICKS, GRID]
+/**
+ * Pi: recite the digits.
+ *
+ * Every other mode invents a new pattern each run. This one never changes —
+ * round N is the first N digits of pi — so the thing being trained is
+ * knowledge of pi itself, and progress carries from one run to the next.
+ * Playback still runs, so a player who does not know pi can learn it here
+ * rather than being locked out.
+ *
+ * Digits sit on a phone keypad and sound a C major pentatonic, low to high.
+ * Because the scale has no dissonant interval, the opening plays as an
+ * actual melody rather than as noise: 3 . 1 4 1 5 9 has a tune.
+ */
+const PI_TONES: readonly number[] = [
+  261.63, // 0  C4
+  293.66, // 1  D4
+  329.63, // 2  E4
+  392.0, // 3  G4
+  440.0, // 4  A4
+  523.25, // 5  C5
+  587.33, // 6  D5
+  659.25, // 7  E5
+  783.99, // 8  G5
+  880.0, // 9  A5
+]
+
+/** Keypad columns, for stereo placement: 1/4/7 left, 2/5/8/0 centre, 3/6/9 right. */
+const PI_PAN: readonly number[] = [0, -0.6, 0, 0.6, -0.6, 0, 0.6, -0.6, 0, 0.6]
+
+const PI_SYMBOL_IDS: readonly SymbolId[] = [
+  'd0',
+  'd1',
+  'd2',
+  'd3',
+  'd4',
+  'd5',
+  'd6',
+  'd7',
+  'd8',
+  'd9',
+]
+
+const PI: ModeDef = {
+  id: 'pi',
+  name: 'Pi',
+  tagline: 'The digits of \u03c0, in order. Everyone knows the first two.',
+  layout: 'keypad',
+  ambientRootHz: 65.41, // C2 — under the C pentatonic the digits are tuned to
+  readout: true,
+  fixedSequence: PI_DIGITS.map((digit) => PI_SYMBOL_IDS[Number(digit)]),
+  symbols: PI_SYMBOL_IDS.map((id, digit) => ({
+    id,
+    glyph: String(digit),
+    name: `digit ${digit}`,
+    colorVar: `--sym-d${digit}`,
+    toneHz: PI_TONES[digit],
+    pan: PI_PAN[digit],
+    // The number row and the numpad both report these.
+    keys: [String(digit)],
+    mouseButton: null,
+  })),
+}
+
+export const MODES: readonly ModeDef[] = [ARROWS, CLICKS, GRID, PI]
 
 export function getMode(id: ModeId): ModeDef {
   const mode = MODES.find((m) => m.id === id)

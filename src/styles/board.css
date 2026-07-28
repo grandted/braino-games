@@ -49,6 +49,49 @@
   opacity: 0.55;
 }
 
+/* A phone keypad: 1-9 in a block with 0 under the middle. Source order is
+   0..9, so each pad is placed explicitly. */
+.board--keypad {
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    'd1 d2 d3'
+    'd4 d5 d6'
+    'd7 d8 d9'
+    '.  d0 . ';
+  gap: 10px;
+}
+
+.pad--d0 {
+  grid-area: d0;
+}
+.pad--d1 {
+  grid-area: d1;
+}
+.pad--d2 {
+  grid-area: d2;
+}
+.pad--d3 {
+  grid-area: d3;
+}
+.pad--d4 {
+  grid-area: d4;
+}
+.pad--d5 {
+  grid-area: d5;
+}
+.pad--d6 {
+  grid-area: d6;
+}
+.pad--d7 {
+  grid-area: d7;
+}
+.pad--d8 {
+  grid-area: d8;
+}
+.pad--d9 {
+  grid-area: d9;
+}
+
 /* Locked = playback running. Input is swallowed, and it looks it. */
 .board--locked {
   cursor: not-allowed;
@@ -128,6 +171,15 @@
 .board--grid .pad {
   width: clamp(62px, 15vw, 96px);
   aspect-ratio: 1;
+}
+
+.board--keypad .pad {
+  width: clamp(58px, 14vw, 88px);
+  aspect-ratio: 1;
+}
+
+.board--keypad .pad__glyph {
+  font: 800 clamp(24px, 6vw, 38px) / 1 var(--mono);
 }
 
 .pad__glyph {
@@ -253,6 +305,17 @@
 
   .board--grid .pad__glyph {
     font-size: clamp(20px, 6vw, 34px);
+  }
+
+  .board--keypad {
+    gap: 8px;
+    max-width: 340px;
+    margin-inline: auto;
+  }
+
+  .board--keypad .pad {
+    width: 100%;
+    aspect-ratio: 1;
   }
 
   .pad__glyph {

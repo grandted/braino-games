@@ -33,6 +33,19 @@
   --sym-g-s: #cba6f7;
   --sym-g-se: #f5c2e7;
 
+  /* Pi: one colour per digit, cycling the wheel so adjacent digits never
+     look alike — which matters when the pattern is 3.14159 and not random. */
+  --sym-d0: #b4befe;
+  --sym-d1: #f38ba8;
+  --sym-d2: #fab387;
+  --sym-d3: #f9e2af;
+  --sym-d4: #a6e3a1;
+  --sym-d5: #94e2d5;
+  --sym-d6: #89dceb;
+  --sym-d7: #89b4fa;
+  --sym-d8: #cba6f7;
+  --sym-d9: #f5c2e7;
+
   --accent: #cba6f7;
   --danger: #f38ba8;
   --ok: #a6e3a1;
