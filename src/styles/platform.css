@@ -443,6 +443,8 @@ body[data-view='deck'] .shell-back {
 }
 
 .card__heading .emblem--cluster {
+  /* aspect-ratio sets the height; a square box here would squash the pips. */
+  height: auto;
   gap: 3px;
 }
 
@@ -453,10 +455,18 @@ body[data-view='deck'] .shell-back {
   grid-template-areas:
     '.    up    .    '
     'left down  right';
+  /* Three columns over two rows, so a square box would give tall pips. */
+  aspect-ratio: 3 / 2;
+  height: auto;
   gap: 4px;
 }
 
 .emblem__pip {
+  /* Sized explicitly, and deliberately not left to the parent's alignment: an
+     empty span under `place-items: center` is sized to its content, which is
+     nothing at all. These pips drew as 0x0 until this line existed. */
+  width: 100%;
+  height: 100%;
   border-radius: 4px;
   background: var(--sym);
   box-shadow: 0 0 12px color-mix(in srgb, var(--sym) 55%, transparent);

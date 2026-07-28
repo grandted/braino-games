@@ -29,6 +29,12 @@ mode whose sequence is fixed rather than random).
 4. **A game cleans up completely.** `GameHandle.destroy()` must drop every
    listener, timer and audio node. The shell reuses the container.
 
+**A painted element with no text must state its own size.** Decorative
+leaves — pips, rules, rings, ticks — are empty spans, and an empty span
+under a `place-items: center` parent is sized to its content, which is
+nothing. Tangent's emblem pips drew as 0×0 for their whole existence
+because of this. `responsive-test` checks the whole family.
+
 **Card art must be inert.** `GameCard.renderBackdrop()` returns scenery —
 no timers, no listeners, nothing running after it returns. CSS animation
 is fine. That requirement is what lets the platform drop card art on the
