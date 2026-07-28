@@ -22,8 +22,13 @@ export interface Store {
   insert(draft: EntryDraft, achievedAt: string): Entry
   /** All-time position of an entry within its mode, 1-based. */
   rankOf(entry: Entry): number
+  /** Total rows kept, across every mode. Logged at startup. */
+  count(): number
   close(): void
 }
+
+/** Bumped when the schema changes. Recorded in the database itself. */
+const SCHEMA_VERSION = 3
 
 interface Row {
   id: number
@@ -82,11 +87,13 @@ export function openStore(path: string): Store {
     create index if not exists leaderboardEntryV2AchievedAt
       on leaderboardEntryV2 (mode, achievedAt);
 
-    -- v0.3 replaced the schema outright. Pre-v0.3 rows have no points and no
-    -- rounds column, and scoring them after the fact would be inventing
-    -- numbers nobody earned, so the old table goes.
-    drop table if exists leaderboardEntry;
+    create table if not exists schemaMeta (
+      key   text primary key,
+      value text not null
+    );
   `)
+
+  migrate(db)
 
   const selectWindowed = db.prepare(`
     select ${COLUMNS}
@@ -114,6 +121,10 @@ export function openStore(path: string): Store {
 
   // The same five keys as RANK_ORDER, unrolled into a strict "is better than"
   // comparison. Each line ties every key above it and wins on its own.
+  const countAll = db.prepare(
+    'select count(*) as total from leaderboardEntryV2',
+  )
+
   const countBetter = db.prepare(`
     select count(*) as better
       from leaderboardEntryV2
@@ -152,6 +163,11 @@ export function openStore(path: string): Store {
       return { ...draft, id: String(result.lastInsertRowid), achievedAt }
     },
 
+    count() {
+      const row = countAll.get() as unknown as { total: number } | undefined
+      return row?.total ?? 0
+    },
+
     rankOf(entry) {
       const { points, level, rounds, avgReactionMs, achievedAt } = entry
       const row = countBetter.get(
@@ -178,6 +194,35 @@ export function openStore(path: string): Store {
     close() {
       db.close()
     },
+  }
+}
+
+/**
+ * Schema migrations, run once and recorded.
+ *
+ * The v0.3 cleanup used to be an unconditional `drop table` in the startup
+ * path — it had done its job long ago but ran on every single boot, which is
+ * a destructive statement sitting permanently in the hot path for no reason.
+ * It now runs only if this database has never been stamped, and the stamp
+ * means it can never run again.
+ */
+function migrate(db: DatabaseSync): void {
+  const row = db
+    .prepare(`select value from schemaMeta where key = 'version'`)
+    .get() as unknown as { value: string } | undefined
+  const version = row ? Number(row.value) : 0
+
+  if (version < 3) {
+    // Pre-v0.3 rows had no points and no rounds. Scoring them after the fact
+    // would be inventing numbers nobody earned, so the old table goes — once.
+    db.exec('drop table if exists leaderboardEntry')
+  }
+
+  if (version !== SCHEMA_VERSION) {
+    db.prepare(
+      `insert into schemaMeta (key, value) values ('version', ?)
+         on conflict(key) do update set value = excluded.value`,
+    ).run(String(SCHEMA_VERSION))
   }
 }
 

@@ -84,8 +84,12 @@ per mode and never merged — a clicks run is not an arrows run.
 Global, and per mode. Sliceable by last 24 hours, last week, last month
 or all time, so the board isn't just a wall of records nobody can reach.
 
-Scores live on the server — there is no local board, so no network means
-no leaderboard. Submissions get light sanity checks (a run whose numbers
+Scores live on the server, in `data/tangent.db`, and persist across
+restarts, rebuilds and branch switches. That file is gitignored, so it is
+the one thing in the project a commit will not bring back — copy it if you
+care about it.
+
+There is no local board, so no network means no leaderboard. Submissions get light sanity checks (a run whose numbers
 contradict each other is refused), but this is not anti-cheat and isn't
 trying to be.
 

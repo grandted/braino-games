@@ -24,8 +24,18 @@ import { createRateLimit } from './rateLimit.ts'
 import { validateDraft } from './validate.ts'
 
 const PORT = Number(process.env.TANGENT_PORT ?? 8787)
-const DB_PATH = process.env.TANGENT_DB ?? resolve('data/tangent.db')
-const STATIC_ROOT = resolve(process.env.TANGENT_STATIC ?? 'dist')
+
+/**
+ * Defaults are resolved against the project root, not the working directory.
+ * Resolving against the cwd meant that launching the server from anywhere
+ * else quietly created a second, empty database and served an empty board —
+ * which looks exactly like losing every score.
+ */
+const PROJECT_ROOT = resolve(import.meta.dirname, '..')
+const DB_PATH = process.env.TANGENT_DB ?? join(PROJECT_ROOT, 'data/tangent.db')
+const STATIC_ROOT = process.env.TANGENT_STATIC
+  ? resolve(process.env.TANGENT_STATIC)
+  : join(PROJECT_ROOT, 'dist')
 /** A submitted run is a few hundred bytes; anything larger is not a run. */
 const MAX_BODY_BYTES = 4096
 
@@ -232,6 +242,9 @@ server.listen(PORT, () => {
   console.log(`tangent leaderboard on http://localhost:${PORT}`)
   console.log(`  database: ${DB_PATH}`)
   console.log(`  static:   ${STATIC_ROOT}`)
+  // Printed so "are my scores still there?" is answerable at a glance.
+  const kept = store.count()
+  console.log(`  entries:  ${kept}${kept === 0 ? ' (empty board)' : ''}`)
 })
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {

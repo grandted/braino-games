@@ -74,8 +74,20 @@ Dev server runs inside WSL2; reach it from Windows at
 `npm run dev -- --host` and hit the WSL IP. Playing on a phone on the
 same network needs `--host` too.
 
+**The leaderboard database is real data — never delete it.** It lives at
+`data/tangent.db` (plus its `-wal`/`-shm` sidecars) and holds every score
+anyone has set. It is gitignored, which means it is *not* backed up by a
+commit and `git clean -xdf` would take it with everything else. Restarting
+the server, rebuilding, and switching branches all leave it alone.
+
+Paths default relative to the **project root**, not the working directory,
+so launching the server from elsewhere cannot silently create a second,
+empty database. Schema changes go through `migrate()` in `server/db.ts`,
+which records a version in the database itself so a migration runs once
+and never again.
+
 Server environment variables: `TANGENT_PORT` (8787), `TANGENT_DB`
-(`data/tangent.db`), `TANGENT_STATIC` (`dist`), `TANGENT_TRUST_PROXY`
+(`<root>/data/tangent.db`), `TANGENT_STATIC` (`<root>/dist`), `TANGENT_TRUST_PROXY`
 (set to `1` only when something in front actually rewrites
 `x-forwarded-for` — a client can otherwise spoof it and dodge the rate
 limit).
