@@ -23,6 +23,7 @@ import {
   isValidNickname,
   labelsFor,
   normaliseNickname,
+  readBest,
   readLastNickname,
   relativeTime,
   rememberNickname,
@@ -174,6 +175,24 @@ export function createMenuScreen({
   rules.textContent =
     'Three lives. Miss and the round replays. Solve it faster to score more.'
 
+  // Your own record, so there's a target long before the global board is
+  // in reach.
+  const bests = MODES.map((mode) => ({ mode, best: readBest(mode.id) })).filter(
+    (entry) => entry.best !== null,
+  )
+  const personal = document.createElement('p')
+  personal.className = 'menu-best'
+  if (bests.length > 0) {
+    personal.innerHTML =
+      'Your best — ' +
+      bests
+        .map(
+          ({ mode, best }) =>
+            `${mode.name} <strong>${best!.points.toLocaleString()}</strong>`,
+        )
+        .join(' · ')
+  }
+
   const hint = createHint(
     '<kbd>↑</kbd><kbd>↓</kbd> to choose · <kbd>enter</kbd> to start · ' +
       '<kbd>m</kbd> for sound',
@@ -193,6 +212,7 @@ export function createMenuScreen({
   controls.append(board, mute.element)
 
   element.append(title, subtitle, list, rules, hint, controls)
+  if (bests.length > 0) element.insertBefore(personal, hint)
 
   // Roving focus so arrow keys work as well as tab.
   function onKeyDown(event: KeyboardEvent): void {
@@ -246,6 +266,8 @@ export interface GameScreen extends Screen {
     genome: number,
     hue: number,
   ): void
+  /** How many rounds until the next organism. */
+  setNextLevel(roundsAway: number, organism: string): void
   setPoints(points: number): void
   /** A genome completed: announce the new organism and change the palette. */
   evolve(level: number, organism: string): void
@@ -292,6 +314,9 @@ export function createGameScreen({
   const evolution = document.createElement('p')
   evolution.className = 'evolution'
 
+  const nextUp = document.createElement('p')
+  nextUp.className = 'next-up'
+
   const organismName = document.createElement('span')
   organismName.className = 'evolution__name'
 
@@ -311,7 +336,7 @@ export function createGameScreen({
   const lives = document.createElement('p')
   lives.className = 'lives'
 
-  header.append(modeTag, points, round, evolution, lives, status)
+  header.append(modeTag, points, round, evolution, nextUp, lives, status)
 
   const progress = document.createElement('div')
   progress.className = 'progress'
@@ -385,6 +410,15 @@ export function createGameScreen({
       // Tints the screen's backdrop to match the organism.
       element.style.setProperty('--level-hue', String(hue))
       element.dataset.level = String(value)
+    },
+
+    setNextLevel(roundsAway, organism) {
+      nextUp.textContent =
+        roundsAway <= 0
+          ? ''
+          : roundsAway === 1
+            ? `1 round to ${organism}`
+            : `${roundsAway} rounds to ${organism}`
     },
 
     setPoints(value) {
@@ -474,6 +508,8 @@ const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'])
 export interface GameOverScreenOptions {
   readonly mode: ModeDef
   readonly stats: RunStats
+  /** Standing record for this mode, and whether this run set it. */
+  readonly best: { points: number; improved: boolean }
   readonly onRetry: () => void
   readonly onMenu: () => void
   /** `highlight` is the id of a run just saved, with the rank it earned. */
@@ -485,6 +521,7 @@ export interface GameOverScreenOptions {
 export function createGameOverScreen({
   mode,
   stats,
+  best,
   onRetry,
   onMenu,
   onShowLeaderboard,
@@ -515,6 +552,14 @@ export function createGameOverScreen({
   const modeTag = document.createElement('p')
   modeTag.className = 'over__mode'
   modeTag.textContent = `${mode.name} mode`
+
+  const record = document.createElement('p')
+  record.className = best.improved ? 'over__record is-new' : 'over__record'
+  if (stats.rounds > 0) {
+    record.textContent = best.improved
+      ? 'A new personal best'
+      : `Your best · ${best.points.toLocaleString()}`
+  }
 
   const statList = document.createElement('dl')
   statList.className = 'stats'
@@ -555,7 +600,9 @@ export function createGameOverScreen({
     'Tap anywhere to play again.',
   )
 
-  element.append(heading, score, reached, modeTag, statList)
+  element.append(heading, score, reached, modeTag)
+  if (stats.rounds > 0) element.append(record)
+  element.append(statList)
   // A run that cleared nothing has nothing to submit.
   if (stats.rounds > 0) element.append(createSubmitForm())
   element.append(actions, hint)

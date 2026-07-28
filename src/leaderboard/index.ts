@@ -15,6 +15,7 @@ export function createLeaderboard(): LeaderboardProvider {
 
 export { absoluteTime, labelsFor, relativeTime } from './labels.ts'
 export { readLastNickname, rememberNickname } from './nickname.ts'
+export { readBest, recordRun, type PersonalBest } from './personal.ts'
 export { LeaderboardError } from './remote.ts'
 export {
   DEFAULT_WINDOW,

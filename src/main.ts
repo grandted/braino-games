@@ -5,7 +5,8 @@ import './styles/helix.css'
 
 import { Engine, type EngineEvent, type RunStats } from './game/engine.ts'
 import { MODES, TIMING, getSymbol, type ModeDef } from './game/modes.ts'
-import { createLeaderboard } from './leaderboard/index.ts'
+import { createLeaderboard, recordRun } from './leaderboard/index.ts'
+import { organismFor, roundsForLevel } from './game/evolution.ts'
 import { createTones } from './ui/audio.ts'
 import {
   createGameOverScreen,
@@ -67,10 +68,19 @@ function showLeaderboard(
   )
 }
 function showGameOver(mode: ModeDef, stats: RunStats): void {
+  // Banked before the screen renders, so "a new personal best" is decided
+  // against the record as it stood when the run started.
+  const { best, improved } = recordRun(mode.id, {
+    points: stats.points,
+    level: stats.level,
+    rounds: stats.rounds,
+  })
+
   show(
     createGameOverScreen({
       mode,
       stats,
+      best: { points: best.points, improved },
       tones,
       provider: leaderboard,
       onRetry: () => playMode(mode),
@@ -97,12 +107,20 @@ function playMode(mode: ModeDef): void {
   /** The only place engine events become pixels. */
   function render(event: EngineEvent): void {
     switch (event.type) {
-      case 'round':
+      case 'round': {
         screen.setRound(event.round)
         screen.setProgress(0, event.sequence.length)
         paintGenome()
+        // A concrete target, in the unit the player actually controls.
+        const level = engine.level
+        const nextAt = roundsForLevel(level + 1)
+        screen.setNextLevel(
+          nextAt - (event.round - 1),
+          organismFor(level + 1).name,
+        )
         screen.board.clear()
         break
+      }
       case 'phase':
         screen.board.setLocked(event.phase === 'playback')
         // The strand hangs still while the sequence plays, and spins up when

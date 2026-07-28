@@ -51,7 +51,19 @@
   touch-action: none;
   border: 3px solid color-mix(in srgb, var(--sym) 35%, transparent);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--sym) 8%, var(--bg-raised));
+  /* Lit from above, seated on a shadow — a key you could press, rather than
+     a rectangle that changes colour. */
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--sym) 14%, var(--bg-raised)),
+      color-mix(in srgb, var(--sym) 5%, var(--bg-sunken))
+    );
+  box-shadow:
+    inset 0 2px 0 color-mix(in srgb, var(--sym) 22%, transparent),
+    inset 0 -3px 8px rgb(0 0 0 / 0.45),
+    0 5px 0 -1px rgb(0 0 0 / 0.5),
+    0 10px 22px rgb(0 0 0 / 0.35);
   color: color-mix(in srgb, var(--sym) 70%, var(--text-dim));
   transition:
     transform 90ms ease,
@@ -59,6 +71,32 @@
     border-color 140ms ease,
     box-shadow 140ms ease,
     color 140ms ease;
+}
+
+/* The impact ring: expands out of the pad on every accepted input. */
+.pad::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+  border: 2px solid var(--sym);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pad--impact::after {
+  animation: pad-impact 420ms ease-out;
+}
+
+@keyframes pad-impact {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+  }
 }
 
 .board--cluster .pad {
@@ -86,12 +124,18 @@
 
 /* Lit — playback flash and input confirm share the look, not the timing. */
 .pad--lit {
-  background: var(--sym);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #fff 22%, var(--sym)),
+    var(--sym)
+  );
   border-color: var(--sym);
   color: var(--bg-sunken);
   box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.35),
     0 0 0 6px color-mix(in srgb, var(--sym) 22%, transparent),
-    0 0 44px color-mix(in srgb, var(--sym) 55%, transparent);
+    0 0 48px color-mix(in srgb, var(--sym) 65%, transparent),
+    0 5px 0 -1px rgb(0 0 0 / 0.5);
 }
 
 .pad--playback {
@@ -99,7 +143,12 @@
 }
 
 .pad--pressed {
-  transform: translateY(3px) scale(0.97);
+  transform: translateY(4px) scale(0.985);
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.3),
+    0 0 0 5px color-mix(in srgb, var(--sym) 20%, transparent),
+    0 0 40px color-mix(in srgb, var(--sym) 55%, transparent),
+    0 1px 0 -1px rgb(0 0 0 / 0.5);
 }
 
 .pad--miss {
@@ -189,5 +238,9 @@
   .pad--pressed {
     transform: none;
     opacity: 0.75;
+  }
+
+  .pad--impact::after {
+    animation: none;
   }
 }

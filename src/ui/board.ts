@@ -21,6 +21,13 @@ import {
   type SymbolId,
 } from '../game/modes.ts'
 
+/**
+ * The impact ring outlives the pressed state on purpose — the pad springs back
+ * quickly, but the ring keeps expanding after it, which is what makes a hit
+ * feel like it landed rather than merely registered.
+ */
+const IMPACT_MS = 420
+
 export interface Board {
   readonly element: HTMLElement
   /** Light a pad for `durationMs` (playback). */
@@ -90,6 +97,8 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
 
   const pads = new Map<SymbolId, HTMLElement>()
   const timers = new Map<SymbolId, number>()
+  /** Separate from `timers`: the ring runs longer than the pressed state. */
+  const impacts = new Map<SymbolId, number>()
 
   for (const symbol of mode.symbols) {
     const pad = createPad(mode, symbol)
@@ -175,12 +184,34 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
 
     pressed(symbol) {
       light(symbol, TIMING.inputFlashMs, 'pad--pressed')
+
+      const pad = pads.get(symbol)
+      if (!pad) return
+      pad.classList.remove('pad--impact')
+      void pad.offsetWidth
+      pad.classList.add('pad--impact')
+      const previous = impacts.get(symbol)
+      if (previous !== undefined) clearTimeout(previous)
+      impacts.set(
+        symbol,
+        window.setTimeout(() => {
+          pad.classList.remove('pad--impact')
+          impacts.delete(symbol)
+        }, IMPACT_MS),
+      )
     },
 
     clear() {
       for (const id of pads.keys()) lift(id)
+      for (const id of impacts.values()) clearTimeout(id)
+      impacts.clear()
       for (const pad of pads.values()) {
-        pad.classList.remove('pad--playback', 'pad--pressed', 'pad--miss')
+        pad.classList.remove(
+          'pad--playback',
+          'pad--pressed',
+          'pad--miss',
+          'pad--impact',
+        )
       }
     },
 
@@ -204,6 +235,8 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
       playArea.removeEventListener('contextmenu', onContextMenu)
       for (const id of timers.values()) clearTimeout(id)
       timers.clear()
+      for (const id of impacts.values()) clearTimeout(id)
+      impacts.clear()
       element.remove()
     },
   }

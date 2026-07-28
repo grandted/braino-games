@@ -83,6 +83,19 @@
   font-size: 14px;
 }
 
+/* Your own record — a target long before the global board is in reach. */
+.menu-best {
+  font: 700 13px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.menu-best strong {
+  color: var(--accent);
+  font-size: 15px;
+}
+
 /* One line of rules, so a first-time player knows the stakes. */
 .menu-rules {
   color: var(--text-dim);
@@ -193,6 +206,16 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+/* A concrete target, in the unit the player actually controls. */
+.next-up {
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0.75;
+  min-height: 1em;
 }
 
 /* Evolution: which organism, and how much of its genome is bonded. */
@@ -341,7 +364,8 @@
   .screen--game.is-anomaly,
   .screen--game.is-anomaly .hud__points,
   .screen--game.is-celebrating .lives,
-  .screen--game.is-evolving::before {
+  .screen--game.is-evolving::before,
+  .over__record.is-new {
     animation: none;
   }
 
@@ -504,6 +528,34 @@
   font-size: clamp(15px, 3.5vw, 18px);
   color: var(--accent);
   font-weight: 700;
+}
+
+/* Beat your record and the screen says so before anything else. */
+.over__record {
+  font: 700 13px/1 var(--mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.over__record.is-new {
+  color: var(--ok);
+  animation: record-pop 700ms ease-out;
+}
+
+@keyframes record-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 .over__mode {
