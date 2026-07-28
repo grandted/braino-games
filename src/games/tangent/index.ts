@@ -14,6 +14,7 @@ import { organismFor, roundsForLevel } from './game/evolution.ts'
 import { formatPi } from './game/pi.ts'
 import { GAME_ID, GAME_HUE } from './meta.ts'
 import { createTones, type Tones } from './ui/audio.ts'
+import { createHelix } from './ui/helix.ts'
 import {
   createGameOverScreen,
   createGameScreen,
@@ -258,6 +259,27 @@ function mount(container: HTMLElement, context: GameContext): GameHandle {
   }
 }
 
+/**
+ * The card's background: a real strand, part-bonded and turning.
+ *
+ * Inert as the contract requires — `createHelix` only sets timers in `bond()`
+ * and `evolve()`, and neither is called here, so this is CSS animation and
+ * nothing else.
+ */
+function renderBackdrop(): HTMLElement {
+  const art = document.createElement('span')
+  art.className = 'tangent-art'
+
+  const strand = createHelix(MODES[0])
+  strand.element.classList.add('helix--card')
+  strand.setLive(true)
+  // Deferred for the usual reason: the strand reads its rung count from CSS,
+  // which has nothing to say about an element that is not in the document yet.
+  queueMicrotask(() => strand.setGenome(9, 14, GAME_HUE))
+  art.append(strand.element)
+  return art
+}
+
 /** The arrow cluster, in the game's own symbol colours. */
 function renderEmblem(): HTMLElement {
   const emblem = document.createElement('span')
@@ -284,6 +306,7 @@ export const tangent: GameDefinition = {
       'finishes as you do.',
     hue: GAME_HUE,
     renderEmblem,
+    renderBackdrop,
   },
   mount,
 }

@@ -27,8 +27,12 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
   const back = document.createElement('button')
   back.type = 'button'
   back.className = 'shell-back'
-  // Short on purpose: this sits over a game's HUD, including on a phone.
-  back.innerHTML = '<span aria-hidden="true">←</span> All games'
+  // Short on purpose: this sits over a game's HUD, including on a phone, where
+  // the label collapses to the arrow alone.
+  back.innerHTML =
+    '<span aria-hidden="true">←</span>' +
+    '<span class="shell-back__label">All games</span>'
+  back.setAttribute('aria-label', 'Back to all games')
   back.addEventListener('click', () => navigate('/'))
 
   container.append(back, stage)

@@ -126,15 +126,25 @@ body[data-view='deck'] .shell-back {
 
 .deck {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(232px, 260px));
+  /* Layout follows *width*, never pointer type: a tablet is a wide screen
+     you happen to touch, and pinning it to a phone layout wastes it.
+     auto-fit + min() gives one column on a phone, two on a tablet, three up. */
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 236px), 1fr));
   justify-content: center;
-  gap: clamp(16px, 2.6vw, 28px);
+  gap: clamp(14px, 2.4vw, 26px);
   width: 100%;
-  perspective: 1400px;
+  max-width: 1000px;
+  /* Deep enough that a tilt reads as rotation rather than as a skew. */
+  perspective: 1200px;
 }
 
 .card {
   --game-hue: 285;
+  /* Driven by the pointer (see attachTilt) and by :hover respectively. */
+  --tilt-x: 0;
+  --tilt-y: 0;
+  --lift: 0;
+
   position: relative;
   display: block;
   width: 100%;
@@ -146,7 +156,7 @@ body[data-view='deck'] .shell-back {
   color: var(--text);
   background: linear-gradient(
     165deg,
-    color-mix(in srgb, hsl(var(--game-hue) 70% 55%) 16%, var(--bg-raised)),
+    color-mix(in srgb, hsl(var(--game-hue) 70% 55%) 18%, var(--bg-raised)),
     var(--bg-sunken)
   );
   border: 1px solid color-mix(in srgb, hsl(var(--game-hue) 70% 60%) 34%, var(--line));
@@ -156,13 +166,23 @@ body[data-view='deck'] .shell-back {
   box-shadow:
     0 1px 0 color-mix(in srgb, hsl(var(--game-hue) 80% 70%) 22%, transparent) inset,
     0 18px 40px rgb(0 0 0 / 0.45);
-  /* Dealt, not drawn: each card lands a beat after the one before it. */
-  animation: deal 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: calc(var(--deal, 0) * 110ms);
+
+  /* One transform for lift and tilt together, so they cannot fight. */
+  transform: translateY(calc(var(--lift) * -16px))
+    scale(calc(1 + var(--lift) * 0.05))
+    rotateX(calc(var(--tilt-x) * 9deg))
+    rotateY(calc(var(--tilt-y) * 11deg));
   transition:
-    transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
     border-color 260ms ease,
     box-shadow 260ms ease;
+}
+
+/* Only while dealing. Removed on animationend, because a finished animation
+   with a fill mode keeps its last frame and outranks everything above. */
+.card.is-dealing {
+  animation: deal 620ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--deal, 0) * 110ms);
 }
 
 @keyframes deal {
@@ -177,19 +197,60 @@ body[data-view='deck'] .shell-back {
   }
 }
 
-.card:hover,
-.card:focus-visible {
-  transform: translateY(-10px) rotateX(6deg) scale(1.02);
+/* While the pointer is on it the card follows, so the transition would fight
+   the movement. Snap during, ease on the way out. */
+.card:hover {
+  --lift: 1;
+  transition:
+    transform 60ms linear,
+    border-color 260ms ease,
+    box-shadow 260ms ease;
   border-color: hsl(var(--game-hue) 75% 62%);
   box-shadow:
     0 1px 0 color-mix(in srgb, hsl(var(--game-hue) 85% 75%) 34%, transparent) inset,
     0 0 0 1px color-mix(in srgb, hsl(var(--game-hue) 75% 60%) 30%, transparent),
-    0 30px 60px rgb(0 0 0 / 0.55),
-    0 0 70px color-mix(in srgb, hsl(var(--game-hue) 80% 55%) 22%, transparent);
+    0 36px 70px rgb(0 0 0 / 0.6),
+    0 0 90px color-mix(in srgb, hsl(var(--game-hue) 80% 55%) 26%, transparent);
+}
+
+.card:focus-visible {
+  --lift: 1;
+  border-color: hsl(var(--game-hue) 75% 62%);
 }
 
 .card:active {
-  transform: translateY(-4px) scale(0.995);
+  --lift: 0.4;
+}
+
+/* The game's own art, clipped to the card. Its own layer, so the card's 3D
+   children are not flattened by the overflow needed to clip it. */
+.card__backdrop {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  overflow: hidden;
+  opacity: 0.5;
+  transform: translateZ(1px);
+  transition: opacity 320ms ease;
+  pointer-events: none;
+}
+
+.card:hover .card__backdrop,
+.card:focus-visible .card__backdrop {
+  opacity: 0.9;
+}
+
+/* A wash over the art, so text stays readable whatever the game draws. */
+.card__backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--bg-sunken) 55%, transparent) 0%,
+    color-mix(in srgb, var(--bg-sunken) 20%, transparent) 45%,
+    color-mix(in srgb, var(--bg-sunken) 88%, transparent) 100%
+  );
 }
 
 .card__face {
@@ -199,20 +260,32 @@ body[data-view='deck'] .shell-back {
   flex-direction: column;
   gap: 10px;
   padding: 22px 20px;
+  transform-style: preserve-3d;
+}
+
+/* The parallax: layers stand at different depths, so they part as it turns. */
+.card__face > * {
+  transform: translateZ(18px);
+}
+
+.card__face > .emblem {
+  transform: translateZ(42px);
 }
 
 .card__name {
-  font-size: clamp(22px, 3.4vw, 27px);
+  font-size: clamp(21px, 3.2vw, 27px);
   font-weight: 800;
   letter-spacing: -0.02em;
   margin-top: 4px;
+  transform: translateZ(34px);
 }
 
 .card__tagline {
   font: 700 11px/1.4 var(--mono);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: hsl(var(--game-hue) 70% 72%);
+  color: hsl(var(--game-hue) 75% 76%);
+  transform: translateZ(26px);
 }
 
 .card__blurb {
@@ -236,9 +309,9 @@ body[data-view='deck'] .shell-back {
   font: 800 11px/1 var(--mono);
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: hsl(var(--game-hue) 80% 72%);
+  color: hsl(var(--game-hue) 85% 78%);
   opacity: 0;
-  transform: translateX(-6px);
+  transform: translateZ(46px) translateX(-6px);
   transition:
     opacity 220ms ease,
     transform 220ms ease;
@@ -247,28 +320,25 @@ body[data-view='deck'] .shell-back {
 .card:hover .card__cue,
 .card:focus-visible .card__cue {
   opacity: 1;
-  transform: none;
+  transform: translateZ(46px);
 }
 
 /* A game that does not exist yet is a card that has not been turned over. */
 .card--facedown {
   cursor: default;
-  background:
-    repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, hsl(var(--game-hue) 40% 50%) 9%, transparent) 0 6px,
-      transparent 6px 12px
-    ),
-    var(--bg-sunken);
   border-style: dashed;
   border-color: var(--line);
   box-shadow: none;
 }
 
 .card--facedown:hover {
-  transform: none;
+  --lift: 0;
   border-color: var(--line-bright);
   box-shadow: none;
+}
+
+.card--facedown .card__backdrop {
+  opacity: 0.85;
 }
 
 .card--facedown .card__face {
@@ -292,6 +362,37 @@ body[data-view='deck'] .shell-back {
 .card--facedown .card__blurb {
   font-size: 12px;
   max-width: 22ch;
+}
+
+/* Card art ----------------------------------------------------------------- */
+
+/* Tangent's strand, bled off the card edges so it reads as a glimpse. */
+.tangent-art {
+  position: absolute;
+  inset: -14% -22%;
+  display: grid;
+  place-items: center;
+}
+
+.helix--card {
+  --helix-height: 128px;
+  --helix-orbit: 26s;
+  --helix-spin: 9s;
+  --helix-rungs: 14;
+  --helix-stagger: -0.55s;
+  max-width: none;
+  height: auto;
+  perspective: 420px;
+}
+
+.facedown-art {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, hsl(var(--game-hue) 40% 50%) 11%, transparent) 0 6px,
+    transparent 6px 13px
+  );
 }
 
 .landing__footer {
@@ -348,25 +449,70 @@ body[data-view='deck'] .shell-back {
   height: 54px;
 }
 
-@media (pointer: coarse) {
+/* Responsive --------------------------------------------------------------
+ * Layout keys off width; interaction keys off pointer and hover. A tablet is a
+ * wide screen you happen to touch, and deserves the wide layout with the big
+ * targets — not a stretched phone.
+ */
+
+/* Tablet portrait and up: two columns, comfortably. */
+@media (min-width: 600px) {
   .deck {
-    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-    max-width: 560px;
+    gap: clamp(18px, 2.4vw, 26px);
+  }
+}
+
+/* Phones: a single column, and cards that are wider than they are tall so a
+   whole card is visible without scrolling. */
+@media (max-width: 599px) {
+  /* Arrow only: the label would sit across a game's HUD at this width. */
+  .shell-back__label {
+    display: none;
+  }
+
+  .shell-back {
+    padding: 11px 13px;
+  }
+
+  .deck {
+    max-width: 420px;
   }
 
   .card {
-    aspect-ratio: 4 / 5;
+    aspect-ratio: 8 / 7;
   }
 
-  /* No hover on a phone, so the play cue is simply always shown. */
+  .card__face {
+    padding: 18px 17px;
+  }
+
+  .card__blurb {
+    font-size: 12.5px;
+  }
+}
+
+/* No hover to speak of: the play cue is simply always shown, and nothing
+   waits for a pointer that will never arrive. */
+@media (hover: none) {
   .card__cue {
     opacity: 1;
-    transform: none;
+    transform: translateZ(46px);
+  }
+
+  .card__backdrop {
+    opacity: 0.7;
+  }
+}
+
+/* Bigger targets wherever the input is a finger, whatever the screen size. */
+@media (pointer: coarse) {
+  .shell-back {
+    padding: 12px 18px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card {
+  .card.is-dealing {
     animation: card-fade 260ms ease both;
   }
 
@@ -379,8 +525,13 @@ body[data-view='deck'] .shell-back {
     }
   }
 
+  /* No tilt, no lift — the card still answers, with colour and shadow. */
+  .card,
   .card:hover,
   .card:focus-visible {
+    --lift: 0;
+    --tilt-x: 0;
+    --tilt-y: 0;
     transform: none;
   }
 

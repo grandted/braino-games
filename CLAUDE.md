@@ -29,6 +29,17 @@ mode whose sequence is fixed rather than random).
 4. **A game cleans up completely.** `GameHandle.destroy()` must drop every
    listener, timer and audio node. The shell reuses the container.
 
+**Card art must be inert.** `GameCard.renderBackdrop()` returns scenery —
+no timers, no listeners, nothing running after it returns. CSS animation
+is fine. That requirement is what lets the platform drop card art on the
+floor without a teardown contract, and the deck wraps it in a try/catch
+so a game that cannot draw itself is still playable.
+
+**Layout keys off width; interaction keys off pointer.** A tablet is a
+wide screen you happen to touch — it wants the wide layout *and* the big
+targets. Anything sizing a layout from `(pointer: coarse)` alone will
+serve a stretched phone to a tablet.
+
 **Adding a game**: write a `GameDefinition`, put it in
 `platform/registry.ts`, add its rules to `server/games/<id>.ts` and its id
 to the validator table in `server/validate.ts`. Nothing else changes —

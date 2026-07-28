@@ -29,6 +29,11 @@ function comingSoon(id: string, hue: number, blurb: string): GameDefinition {
         emblem.textContent = '?'
         return emblem
       },
+      renderBackdrop() {
+        const art = document.createElement('span')
+        art.className = 'facedown-art'
+        return art
+      },
     },
     mount() {
       throw new Error(`${id} is not playable yet`)

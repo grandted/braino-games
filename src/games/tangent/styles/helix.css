@@ -318,7 +318,9 @@
     /* Fewer rungs, so each must turn further to still trace a whole coil. */
     --helix-stagger: -0.16s;
     perspective: 320px;
-    max-width: 92vw;
+    /* min(), not 92vw alone: on a tablet that would stretch the strand across
+       the whole screen and lose the shape entirely. */
+    max-width: min(92vw, 620px);
   }
 
   .helix__node {

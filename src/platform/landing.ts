@@ -82,6 +82,27 @@ function createCard(
   card.style.setProperty('--game-hue', String(game.card.hue))
   // Deals in staggered, so the deck lands rather than appears.
   card.style.setProperty('--deal', String(index))
+  card.classList.add('is-dealing')
+  // The deal is removed once it has run. A finished animation with a fill mode
+  // keeps its last frame applied and outranks author rules, so leaving it on
+  // would pin `transform: none` and silently defeat every hover and tilt.
+  card.addEventListener(
+    'animationend',
+    () => card.classList.remove('is-dealing'),
+    { once: true },
+  )
+
+  const backdrop = document.createElement('span')
+  backdrop.className = 'card__backdrop'
+  backdrop.setAttribute('aria-hidden', 'true')
+  try {
+    backdrop.append(game.card.renderBackdrop())
+  } catch (error) {
+    // Card art is scenery. A game that cannot draw its own backdrop should
+    // still be playable from a plain card rather than taking the deck down.
+    console.warn(`${game.id}: card art failed to render`, error)
+  }
+  card.append(backdrop)
 
   const face = document.createElement('span')
   face.className = 'card__face'
@@ -117,7 +138,50 @@ function createCard(
   }
 
   card.append(face)
+  if (playable) attachTilt(card)
   return card
+}
+
+/**
+ * Tilts a card toward the pointer, with the face's layers at different depths
+ * so they part as it turns.
+ *
+ * Mouse only, and only where hovering is possible: on a touchscreen there is no
+ * pointer to follow, and a tilt that fires on tap would just be a flinch.
+ */
+function attachTilt(card: HTMLElement): void {
+  // Decorative, so it must never be load-bearing: if the environment cannot
+  // answer the question, the card simply does not tilt.
+  if (typeof window.matchMedia !== 'function') return
+  if (!window.matchMedia('(hover: hover)').matches) return
+
+  // Measured once on entry rather than on every move — reading layout inside a
+  // pointermove handler is how a smooth effect turns into a janky one.
+  let bounds: DOMRect | null = null
+
+  card.addEventListener('pointerenter', (event) => {
+    if (event.pointerType !== 'mouse') return
+    bounds = card.getBoundingClientRect()
+  })
+
+  card.addEventListener('pointermove', (event) => {
+    if (event.pointerType !== 'mouse' || !bounds) return
+    const x = (event.clientX - bounds.left) / bounds.width - 0.5
+    const y = (event.clientY - bounds.top) / bounds.height - 0.5
+    card.style.setProperty('--tilt-y', x.toFixed(3))
+    card.style.setProperty('--tilt-x', (-y).toFixed(3))
+  })
+
+  const settle = (): void => {
+    bounds = null
+    card.style.setProperty('--tilt-x', '0')
+    card.style.setProperty('--tilt-y', '0')
+  }
+  card.addEventListener('pointerleave', settle)
+  // A card can lose the pointer without a leave event — on scroll, or when the
+  // shell swaps the view out from under it.
+  card.addEventListener('pointercancel', settle)
+  card.addEventListener('blur', settle)
 }
 
 /** The best score this player has on any of the game's modes. */

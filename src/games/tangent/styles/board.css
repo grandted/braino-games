@@ -260,6 +260,10 @@
  * thumb-sized and low on the screen rather than centred in it.
  */
 
+/* Touch sizing. Deliberately keyed on the pointer rather than the width: a
+   finger needs a big target on a tablet exactly as much as on a phone. The
+   *widths* below are then capped by screen size, so a tablet gets a
+   comfortable board rather than a stretched phone one. */
 @media (pointer: coarse) {
   .board {
     gap: 12px;
@@ -326,6 +330,33 @@
     font-size: 12px;
   }
 }
+
+/* Tablets: touch targets, but room to breathe. Without this a 1180px tablet
+   inherits the phone caps and plays like a blown-up phone — the pads keyed
+   off pointer type, which says nothing about how much screen there is. */
+@media (pointer: coarse) and (min-width: 700px) {
+  .board--cluster {
+    max-width: 470px;
+  }
+
+  .board--split {
+    max-width: 640px;
+  }
+
+  .board--split .pad {
+    aspect-ratio: 1;
+    max-height: 34svh;
+  }
+
+  .board--grid {
+    max-width: 500px;
+  }
+
+  .board--keypad {
+    max-width: 400px;
+  }
+}
+
 
 /* Motion is decoration here; the colour change carries the information. */
 @media (prefers-reduced-motion: reduce) {

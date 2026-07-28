@@ -48,6 +48,15 @@ export interface GameCard {
   readonly hue: number
   /** Drawn on the card face. Given the card's colour to work with. */
   renderEmblem(): HTMLElement
+  /**
+   * Art for the card's background — a glimpse of the game itself, so a card
+   * looks like the thing it opens rather than like a coloured panel.
+   *
+   * Must be **inert**: no timers, no listeners, no work after it is returned.
+   * CSS animation is fine. That requirement is what lets the platform treat
+   * card art as scenery it can drop on the floor without a teardown call.
+   */
+  renderBackdrop(): HTMLElement
 }
 
 export interface GameDefinition {
