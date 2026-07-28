@@ -255,7 +255,9 @@
   font: 700 12px/1 var(--mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent);
+  /* The whole HUD moves with the organism, not just the backdrop. */
+  color: hsl(var(--level-hue) 75% 68%);
+  transition: color 900ms ease;
 }
 
 .evolution__genome {
@@ -272,10 +274,13 @@
   width: 100%;
   height: 100%;
   border-radius: 3px;
-  background: var(--accent);
+  background: hsl(var(--level-hue) 80% 62%);
+  box-shadow: 0 0 10px hsl(var(--level-hue) 85% 60% / 0.6);
   transform-origin: left center;
   transform: scaleX(0);
-  transition: transform 180ms ease-out;
+  transition:
+    transform 180ms ease-out,
+    background 900ms ease;
 }
 
 /* The Tetris moment: announced here, and swept along the strand by helix.css. */
@@ -471,7 +476,8 @@
 }
 
 .progress__tick.is-done {
-  background: var(--accent);
+  background: hsl(var(--level-hue) 78% 62%);
+  transition: background 900ms ease;
 }
 
 .is-shaking {

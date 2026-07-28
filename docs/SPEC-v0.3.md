@@ -219,6 +219,53 @@ nothing is lost.
 
 ---
 
+## Presentation
+
+### Audio
+
+Generated, never sampled — the project has no asset pipeline by design.
+
+```
+voice → panner ─┬──────────────── dry ──┐
+                └─ send → convolver ────┤→ master → compressor → out
+ambient bed ──────────────── duck ──────┘
+```
+
+A voice is two detuned oscillators through a filter that closes over the note,
+which is the difference between a beep and an instrument. The reverb impulse is
+synthesised at startup as decaying stereo noise; the compressor keeps a dense
+round loud without clipping.
+
+**Symbols are placed in stereo where they sit on the pad.** Left really comes
+from the left. That is not decoration — pairing a sound with a direction is
+another handle for recall, which is the point of the game.
+
+**Symbol pitches never transpose.** They are the memory anchor. The ambient bed
+is rooted to agree with them instead: E under Arrows (whose symbols are E-G-B-D)
+and A under Clicks (A-E). The bed ducks under playback so the pattern always
+sits on top of the mix, and brightens as the run climbs the ladder.
+
+### Personal bests
+
+Kept per mode on the device, and shown on the menu and the gameover screen.
+This does **not** reopen v0.2's decision to drop the local board: there is still
+exactly one board, it is global, and it lives on the server. This is the arcade
+cabinet's "your best" — a target for the overwhelming majority of runs that will
+never trouble the global top twenty.
+
+### The look
+
+Pads are lit from above and seated on a shadow, and travel down onto it when
+hit; every accepted input throws an expanding ring, on its own timer, because
+the pad springs back in 150ms and a ring cut off at 150ms reads as a glitch.
+
+The organism's hue drives the backdrop, the genome bar, the progress ticks and
+the strand together, so the whole screen moves when you evolve. The title screen
+carries its own decorative strand whose hue drifts through the organism palette,
+driven entirely by `@property` and keyframes — no timer runs behind the menu.
+
+---
+
 ## Definition of done for v0.3
 
 - [x] round/level rename across client, server, API and schema

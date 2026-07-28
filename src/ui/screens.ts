@@ -5,14 +5,8 @@
  * is operable with the keyboard alone and with the mouse alone.
  */
 
-import {
-  MODES,
-  TIMING,
-  getMode,
-  type ModeDef,
-  type SymbolId,
-} from '../game/modes.ts'
-import { organismFor } from '../game/evolution.ts'
+import { MODES, TIMING, type ModeDef, type SymbolId } from '../game/modes.ts'
+import { genomeProgress, organismFor } from '../game/evolution.ts'
 import type { RunStats } from '../game/engine.ts'
 import {
   DEFAULT_WINDOW,
@@ -562,6 +556,17 @@ export function createGameOverScreen({
   modeTag.className = 'over__mode'
   modeTag.textContent = `${mode.name} mode`
 
+  // The run's final strand, frozen. A closing image of what you became.
+  const strand = createHelix(mode)
+  strand.element.classList.add('helix--result')
+  const finalGenome = genomeProgress(stats.rounds, stats.basePairs)
+  strand.setGenome(
+    finalGenome.bonded,
+    finalGenome.genome,
+    organismFor(stats.level).hue,
+  )
+  strand.setAnomaly(organismFor(stats.level).anomaly)
+
   const record = document.createElement('p')
   record.className = best.improved ? 'over__record is-new' : 'over__record'
   if (stats.rounds > 0) {
@@ -609,7 +614,9 @@ export function createGameOverScreen({
     'Tap anywhere to play again.',
   )
 
-  element.append(heading, score, reached, modeTag)
+  element.append(heading, score, reached)
+  if (stats.rounds > 0) element.append(strand.element)
+  element.append(modeTag)
   if (stats.rounds > 0) element.append(record)
   element.append(statList)
   // A run that cleared nothing has nothing to submit.
@@ -752,6 +759,7 @@ export function createGameOverScreen({
       element.removeEventListener('pointerdown', onPointerDown)
       element.removeEventListener('contextmenu', onContextMenu)
       mute.destroy()
+      strand.destroy()
       element.remove()
     },
   }
@@ -1001,11 +1009,10 @@ function createEntryRow(
 ): HTMLLIElement {
   const row = document.createElement('li')
   row.className = options.highlight ? 'entry is-you' : 'entry'
-  // Accent each row with its mode's first symbol colour.
-  row.style.setProperty(
-    '--sym',
-    `var(${getMode(entry.mode).symbols[0].colorVar})`,
-  )
+  // Accent by the organism the run reached, so the board reads as a column of
+  // species rather than a column of one colour.
+  const organism = organismFor(entry.level)
+  row.style.setProperty('--sym', `hsl(${organism.hue} 82% 64%)`)
 
   const position = document.createElement('span')
   position.className = 'entry__rank'
@@ -1021,7 +1028,7 @@ function createEntryRow(
 
   const reaction = document.createElement('span')
   reaction.className = 'entry__reaction'
-  reaction.textContent = `L${entry.level} ${organismFor(entry.level).name} · ${entry.rounds} rounds · ${entry.avgReactionMs} ms`
+  reaction.textContent = `L${entry.level} ${organism.name} · ${entry.rounds} rounds · ${entry.avgReactionMs} ms`
   reaction.title = `fastest ${entry.fastestInputMs} ms · ${entry.totalInputs} inputs · ${(entry.runDurationMs / 1000).toFixed(1)} s`
 
   const when = document.createElement('time')

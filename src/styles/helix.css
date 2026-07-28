@@ -251,6 +251,20 @@
   }
 }
 
+/* The result strand: the run's final state, frozen. Never spins — the run is
+   over, and a still image reads as a record rather than as something ongoing. */
+.helix--result {
+  --helix-height: 54px;
+  max-width: 360px;
+  height: calc(var(--helix-height) + 18px);
+  opacity: 0.85;
+}
+
+.helix--result .helix__strand {
+  animation: none;
+  transform: rotateY(-15deg) rotateX(10deg);
+}
+
 /* The kill screen. Nobody is going to see this.
    No filter here on purpose: .screen--game.is-anomaly already inverts the
    whole screen, and a second inversion inside it would cancel back to normal

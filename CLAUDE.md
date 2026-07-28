@@ -89,12 +89,13 @@ src/
 │   ├── screens.ts       menu / game / gameover / leaderboard
 │   ├── board.ts         renders the pad, flash animation, all input
 │   ├── helix.ts         the 3D DNA strand (genome progress)
-│   └── audio.ts         per-symbol tones
+│   └── audio.ts         synthesis, mix chain, reverb, ambient bed
 ├── leaderboard/
 │   ├── types.ts         Provider interface, Entry, windows, shared rules
 │   ├── remote.ts        HTTP provider against /api (v0.2)
 │   ├── labels.ts        derived entry labels + time formatting
 │   ├── nickname.ts      remembers the last nickname locally
+│   ├── personal.ts      your own record per mode, on this device
 │   └── index.ts         provider selection
 └── styles/
 
@@ -104,6 +105,10 @@ server/
 ├── validate.ts          plausibility checks on submitted runs
 └── rateLimit.ts         in-memory fixed-window limiter
 ```
+
+**`leaderboard/personal.ts` is not a leaderboard.** It is the arcade
+cabinet's "your best", kept on the device. There is still exactly one
+board, it is global, and it lives on the server — v0.2's decision stands.
 
 **The leaderboard is behind an interface on purpose.** v0.2 swapped the
 localStorage provider for a remote one and only `leaderboard/index.ts`
@@ -137,14 +142,18 @@ compares them; run it after any change to the order.
    cue has to fit inside that window rather than extending it.
 6. **Every state is reachable by keyboard alone, by mouse alone, and by
    touch alone.** Including menu navigation and retry.
-7. **Nothing competes with the playback timers.** The helix and every cue
+7. **Audio is generated, never sampled.** No asset pipeline exists and
+   none should. The reverb impulse is synthesised at startup; symbol
+   pitches never transpose, because they are the memory anchor — the
+   ambient bed is the thing that has to agree with them.
+8. **Nothing competes with the playback timers.** The helix and every cue
    animate `transform`/`opacity` only, on the compositor. No
    `requestAnimationFrame`, no animating layout properties — a dropped
    frame during playback is a round the player loses unfairly.
-8. **An unbonded helix rung never shows a symbol colour.** The strand sits
+9. **An unbonded helix rung never shows a symbol colour.** The strand sits
    directly above the pads; colouring an unsolved rung would put the
    answer on screen. Colour arrives only on bonding.
-9. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
+10. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
    touchscreen has no right button — a tap reads which *pad* it hit. That
    rule lives in `resolvePointer()` in `ui/board.ts`; change it there and
    nowhere else.
