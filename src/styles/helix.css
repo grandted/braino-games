@@ -10,7 +10,9 @@
  */
 
 .helix {
-  --helix-hue: 285;
+  /* No --helix-hue default here on purpose: @property's initial-value covers
+     it, which leaves an ancestor free to animate the hue and have the strand
+     inherit it. The game screen still wins by setting it inline. */
   /* How many rungs fit. Read once per rebuild by ui/helix.ts. */
   --helix-rungs: 40;
   --helix-spin: 3.6s;
@@ -210,6 +212,42 @@
 @keyframes helix-surge {
   40% {
     filter: brightness(2.6) saturate(1.4);
+  }
+}
+
+/* The title-screen strand: shorter, and drifting through the organism palette
+   so the menu previews what the run is about. `@property` is what lets a
+   custom property animate at all — without it the hue would jump. */
+@property --helix-hue {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 285;
+}
+
+.helix--menu {
+  --helix-height: 62px;
+  --helix-orbit: 19s;
+  max-width: 420px;
+}
+
+@keyframes helix-palette {
+  0% {
+    --helix-hue: 285;
+  }
+  20% {
+    --helix-hue: 190;
+  }
+  40% {
+    --helix-hue: 130;
+  }
+  60% {
+    --helix-hue: 35;
+  }
+  80% {
+    --helix-hue: 320;
+  }
+  100% {
+    --helix-hue: 285;
   }
 }
 

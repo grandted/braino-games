@@ -126,6 +126,14 @@ export function createMenuScreen({
   title.className = 'wordmark'
   title.innerHTML = 'tang<em>e</em>nt'
 
+  // The game's signature object, on the title screen where it belongs. Purely
+  // decorative here: it is never bonded, and its hue drifts through the
+  // organism palette in CSS, so no timer runs behind the menu.
+  const strand = createHelix(MODES[0])
+  strand.element.classList.add('helix--menu')
+  strand.setLive(true)
+  strand.setGenome(23, 36, 285)
+
   const subtitle = document.createElement('p')
   subtitle.className = 'subtitle'
   subtitle.textContent =
@@ -211,7 +219,7 @@ export function createMenuScreen({
   controls.className = 'controls'
   controls.append(board, mute.element)
 
-  element.append(title, subtitle, list, rules, hint, controls)
+  element.append(title, strand.element, subtitle, list, rules, hint, controls)
   if (bests.length > 0) element.insertBefore(personal, hint)
 
   // Roving focus so arrow keys work as well as tab.
@@ -245,6 +253,7 @@ export function createMenuScreen({
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
       mute.destroy()
+      strand.destroy()
       element.remove()
     },
   }

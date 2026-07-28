@@ -1,7 +1,33 @@
 /* Menu ------------------------------------------------------------------- */
 
+/* Drifts through the organism palette. Declared here rather than on the
+   strand so the wordmark's bloom inherits the same hue. The screen-in
+   animation is repeated because a second `animation` declaration would
+   otherwise replace it. */
+.screen--menu {
+  animation:
+    screen-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both,
+    helix-palette 48s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen--menu {
+    animation: screen-fade 160ms ease both;
+  }
+}
+
 .screen--menu .subtitle {
-  margin-top: -14px;
+  margin-top: -6px;
+}
+
+.screen--menu .wordmark {
+  /* A faint bloom under the mark, tinted by whatever the strand is currently
+     drifting through. */
+  text-shadow: 0 0 60px hsl(var(--helix-hue, 285) 80% 60% / 0.35);
+}
+
+.screen--menu .helix {
+  margin-block: -6px;
 }
 
 .mode-list {
