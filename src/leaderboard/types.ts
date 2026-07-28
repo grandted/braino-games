@@ -62,16 +62,16 @@ export const TIME_WINDOWS: ReadonlyArray<{
 export const DEFAULT_WINDOW: TimeWindow = 'week'
 
 export function isTimeWindow(value: unknown): value is TimeWindow {
-  return TIME_WINDOWS.some((window) => window.id === value)
+  return TIME_WINDOWS.some((candidate) => candidate.id === value)
 }
 
 export function timeWindowLabel(id: TimeWindow): string {
-  return TIME_WINDOWS.find((window) => window.id === id)?.label ?? id
+  return TIME_WINDOWS.find((candidate) => candidate.id === id)?.label ?? id
 }
 
 /** The ISO instant a window starts at, or null for all-time. */
 export function windowCutoff(id: TimeWindow, now: Date = new Date()): string | null {
-  const span = TIME_WINDOWS.find((window) => window.id === id)?.ms
+  const span = TIME_WINDOWS.find((candidate) => candidate.id === id)?.ms
   if (span === null || span === undefined) return null
   return new Date(now.getTime() - span).toISOString()
 }
