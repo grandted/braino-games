@@ -92,26 +92,30 @@ function createCard(
     { once: true },
   )
 
-  const backdrop = document.createElement('span')
-  backdrop.className = 'card__backdrop'
-  backdrop.setAttribute('aria-hidden', 'true')
+  // The art gets its own panel across the top. Nothing is ever drawn behind
+  // the text: a wash over artwork is a compromise, and the words lose.
+  const art = document.createElement('span')
+  art.className = 'card__art'
+  art.setAttribute('aria-hidden', 'true')
   try {
-    backdrop.append(game.card.renderBackdrop())
+    art.append(game.card.renderBackdrop())
   } catch (error) {
     // Card art is scenery. A game that cannot draw its own backdrop should
     // still be playable from a plain card rather than taking the deck down.
     console.warn(`${game.id}: card art failed to render`, error)
   }
-  card.append(backdrop)
 
-  const face = document.createElement('span')
-  face.className = 'card__face'
+  const body = document.createElement('span')
+  body.className = 'card__body'
 
-  const emblem = game.card.renderEmblem()
+  const heading = document.createElement('span')
+  heading.className = 'card__heading'
+  heading.append(game.card.renderEmblem())
 
   const name = document.createElement('span')
   name.className = 'card__name'
   name.textContent = game.name
+  heading.append(name)
 
   const tagline = document.createElement('span')
   tagline.className = 'card__tagline'
@@ -121,23 +125,27 @@ function createCard(
   blurb.className = 'card__blurb'
   blurb.textContent = game.card.blurb
 
-  face.append(emblem, name, tagline, blurb)
+  body.append(heading, tagline, blurb)
 
   if (playable) {
+    const meta = document.createElement('span')
+    meta.className = 'card__meta'
+
     const best = bestAcrossModes(game)
     const footer = document.createElement('span')
     footer.className = 'card__footer'
     footer.textContent =
-      best === null ? 'Not played yet' : `Your best · ${best.toLocaleString()}`
-    face.append(footer)
+      best === null ? 'Not played yet' : `Best ${best.toLocaleString()}`
 
     const cue = document.createElement('span')
     cue.className = 'card__cue'
     cue.textContent = 'Play'
-    face.append(cue)
+
+    meta.append(footer, cue)
+    body.append(meta)
   }
 
-  card.append(face)
+  card.append(art, body)
   if (playable) attachTilt(card)
   return card
 }
