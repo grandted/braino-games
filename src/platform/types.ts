@@ -1,5 +1,5 @@
 /**
- * The contract between Mind Games and a game.
+ * The contract between Tiny Brain Games and a game.
  *
  * Two rules hold the platform together, and everything else follows:
  *

@@ -4,7 +4,8 @@ Context for Claude Code. Read this before making changes.
 
 ## What this is
 
-**Mind Games** — a platform for small mind games in the browser. The
+**Tiny Brain Games** (tinybrain.games) — a platform for small mind games
+in the browser. The
 landing page is a deck of cards, one per game; clicking a card opens that
 game, and a persistent back control returns to the deck.
 

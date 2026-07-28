@@ -1,5 +1,5 @@
 /**
- * Mind Games — platform entry.
+ * Tiny Brain Games — platform entry.
  *
  * Bootstrapping only: find the mount point, build the shared services, hand
  * them to the shell. Everything else lives in `platform/` or in a game.

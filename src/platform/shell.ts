@@ -1,5 +1,5 @@
 /**
- * The shell: what is on screen, and how you get back.
+ * The Tiny Brain Games shell: what is on screen, and how you get back.
  *
  * Routing is the URL hash, so the browser's own back button works and a game
  * can be linked to directly. `#/` is the deck; `#/tangent` is a game.
@@ -27,14 +27,20 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
   const back = document.createElement('button')
   back.type = 'button'
   back.className = 'shell-back'
-  back.innerHTML = '<span aria-hidden="true">←</span> Mind Games'
+  // Short on purpose: this sits over a game's HUD, including on a phone.
+  back.innerHTML = '<span aria-hidden="true">←</span> All games'
   back.addEventListener('click', () => navigate('/'))
 
   container.append(back, stage)
 
   let landing: Landing | null = null
   let running: GameHandle | null = null
-  let currentRoute = ''
+  /**
+   * Null, not '', and that matters: an empty hash resolves to the empty path,
+   * so starting this at '' made the "already there" guard fire on the very
+   * first call and render nothing at all.
+   */
+  let currentRoute: string | null = null
 
   function clearStage(): void {
     running?.destroy()
@@ -48,7 +54,7 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
     clearStage()
     document.body.dataset.view = 'deck'
     document.body.style.removeProperty('--game-hue')
-    document.title = 'Mind Games'
+    document.title = 'Tiny Brain Games'
     landing = createLanding((game) => navigate(`/${game.id}`))
     stage.append(landing.element)
   }
@@ -58,7 +64,7 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
     document.body.dataset.view = 'game'
     // The whole page takes on the game's colour while it is being played.
     document.body.style.setProperty('--game-hue', String(game.card.hue))
-    document.title = `${game.name} · Mind Games`
+    document.title = `${game.name} · Tiny Brain Games`
     running = game.mount(stage, {
       exit: () => navigate('/'),
       leaderboard,
@@ -93,6 +99,6 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
   })
 
   console.info(
-    `Mind Games — ${GAMES.filter((g) => g.status === 'ready').length} playable`,
+    `Tiny Brain Games — ${GAMES.filter((g) => g.status === 'ready').length} playable`,
   )
 }

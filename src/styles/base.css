@@ -1,4 +1,4 @@
-/* Design tokens and page shell, shared by Mind Games and every game on it.
+/* Design tokens and page shell, shared by Tiny Brain Games and every game on it.
  *
  * A game's own styles live under `games/<id>/styles/`. Anything in here is
  * platform-wide: if a second game would want it, it belongs here. */

@@ -24,15 +24,15 @@ export function createLanding(onOpen: (game: GameDefinition) => void): Landing {
 
   const title = document.createElement('h1')
   title.className = 'masthead__title'
-  // Split so the two words can be styled and animated independently.
-  title.innerHTML = '<span>Mind</span><span>Games</span>'
+  // Split so the lockup can be styled as two lines rather than one long one.
+  title.innerHTML = '<span>Tiny Brain</span><span>Games</span>'
 
   const rule = document.createElement('span')
   rule.className = 'masthead__rule'
 
   const subtitle = document.createElement('p')
   subtitle.className = 'masthead__subtitle'
-  subtitle.textContent = 'Small games for a sharp head. Pick a card.'
+  subtitle.textContent = 'tinybrain.games — small games for a sharp head'
 
   header.append(title, rule, subtitle)
 
@@ -42,9 +42,10 @@ export function createLanding(onOpen: (game: GameDefinition) => void): Landing {
   const cards = GAMES.map((game, index) => createCard(game, index, onOpen))
   for (const card of cards) deck.append(card)
 
+  const ready = GAMES.filter((game) => game.status === 'ready').length
   const footer = document.createElement('p')
   footer.className = 'landing__footer'
-  footer.textContent = `${GAMES.filter((g) => g.status === 'ready').length} of ${GAMES.length} dealt`
+  footer.textContent = `${ready} of ${GAMES.length} dealt · more on the way`
 
   element.append(header, deck, footer)
 
@@ -63,17 +64,24 @@ function createCard(
 ): HTMLElement {
   const playable = game.status === 'ready'
 
-  const card = document.createElement(playable ? 'button' : 'div')
+  // Built in the branch rather than created generically and then inspected:
+  // a playable card is a real button, and one that isn't should not pretend.
+  let card: HTMLElement
+  if (playable) {
+    const button = document.createElement('button')
+    button.type = 'button'
+    button.addEventListener('click', () => onOpen(game))
+    card = button
+  } else {
+    const panel = document.createElement('div')
+    panel.setAttribute('aria-disabled', 'true')
+    card = panel
+  }
+
   card.className = playable ? 'card' : 'card card--facedown'
   card.style.setProperty('--game-hue', String(game.card.hue))
   // Deals in staggered, so the deck lands rather than appears.
   card.style.setProperty('--deal', String(index))
-  if (card instanceof HTMLButtonElement) {
-    card.type = 'button'
-    card.addEventListener('click', () => onOpen(game))
-  } else {
-    card.setAttribute('aria-disabled', 'true')
-  }
 
   const face = document.createElement('span')
   face.className = 'card__face'

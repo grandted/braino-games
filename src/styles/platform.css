@@ -1,4 +1,4 @@
-/* Mind Games — the platform shell and the deck.
+/* Tiny Brain Games — the platform shell and the deck.
  *
  * Shares Tangent's palette, type scale and motion vocabulary, but speaks in a
  * different voice on purpose: Tangent's wordmark is lowercase and tight, the
@@ -75,10 +75,13 @@ body[data-view='deck'] .shell-back {
   flex-direction: column;
   align-items: center;
   line-height: 0.86;
-  font-size: clamp(46px, 11vw, 104px);
+  /* Sized for the longest line, "TINY BRAIN": at ten tracked capitals the old
+     ceiling ran off the side of a phone. */
+  font-size: clamp(30px, 8.5vw, 88px);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.16em;
+  max-width: 100%;
   /* The indent cancels the trailing letter-space so the block stays centred. */
   text-indent: 0.16em;
   background: linear-gradient(

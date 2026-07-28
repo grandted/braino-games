@@ -1,6 +1,7 @@
-# Mind Games
+# Tiny Brain Games
 
-A platform for small mind games in the browser. The landing page is a deck
+**[tinybrain.games](https://tinybrain.games)** — a platform for small
+mind games in the browser. The landing page is a deck
 of cards — one card per game. Pick one, play it, and the back control
 returns you to the deck.
 

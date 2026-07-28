@@ -1,5 +1,5 @@
 /**
- * Tangent, as a game on the Mind Games platform.
+ * Tangent, as a game on Tiny Brain Games.
  *
  * Everything the game does happens inside `mount()`. It is handed a container
  * and a context and knows nothing about the shell around it — no routing, no
