@@ -5,8 +5,13 @@ Context for Claude Code. Read this before making changes.
 ## What this is
 
 **Tangent** — a browser-based muscle-memory game. A sequence of inputs is
-shown, the player repeats it, the sequence grows by one each round. Two
-modes: arrow keys (4 symbols) and mouse buttons (2 symbols).
+shown, the player repeats it, the sequence grows by one each round. Three
+modes: arrow keys (4 symbols), mouse buttons (2), and a 3×3 grid (9).
+
+Adding a mode means adding a `ModeDef` to `game/modes.ts` and a layout to
+`styles/board.css`. Everything that enumerates modes — menu cards, digit
+shortcuts, leaderboard tabs, personal bests, server validation, the
+database — reads `MODES` and extends on its own. Keep it that way.
 
 ## Vocabulary — read this before touching anything
 

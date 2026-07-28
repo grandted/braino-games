@@ -21,6 +21,18 @@
   --sym-click-left: #cba6f7;
   --sym-click-right: #fab387;
 
+  /* Grid: one vivid colour per cell, ordered as a rainbow across the 3x3 so
+     no two neighbours sit close together on the wheel. */
+  --sym-g-nw: #f38ba8;
+  --sym-g-n: #fab387;
+  --sym-g-ne: #f9e2af;
+  --sym-g-w: #a6e3a1;
+  --sym-g-c: #94e2d5;
+  --sym-g-e: #89dceb;
+  --sym-g-sw: #89b4fa;
+  --sym-g-s: #cba6f7;
+  --sym-g-se: #f5c2e7;
+
   --accent: #cba6f7;
   --danger: #f38ba8;
   --ok: #a6e3a1;

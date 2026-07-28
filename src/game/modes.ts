@@ -12,8 +12,18 @@ export type SymbolId =
   | 'right'
   | 'clickLeft'
   | 'clickRight'
+  // The 3x3, named by compass point: NW is top-left, C is the centre.
+  | 'gridNW'
+  | 'gridN'
+  | 'gridNE'
+  | 'gridW'
+  | 'gridC'
+  | 'gridE'
+  | 'gridSW'
+  | 'gridS'
+  | 'gridSE'
 
-export type ModeId = 'arrows' | 'clicks'
+export type ModeId = 'arrows' | 'clicks' | 'grid'
 
 export interface SymbolDef {
   readonly id: SymbolId
@@ -42,7 +52,7 @@ export interface ModeDef {
   readonly name: string
   readonly tagline: string
   /** How board.ts arranges the pads. */
-  readonly layout: 'cluster' | 'split'
+  readonly layout: 'cluster' | 'split' | 'grid'
   /**
    * Root of the ambient bed, chosen to sit under this mode's symbol pitches.
    * Arrows are E-G-B-D, so the bed is an E; clicks are A-E, so it is an A.
@@ -135,7 +145,123 @@ const CLICKS: ModeDef = {
   ],
 }
 
-export const MODES: readonly ModeDef[] = [ARROWS, CLICKS]
+/**
+ * Nine cells, the hardest pattern space in the game at 3.17 bits a step.
+ *
+ * The sound of a cell tells you where it was, twice over: the column picks the
+ * note and the stereo position, the row picks the octave. Higher on screen is
+ * literally higher, and further right is further right.
+ *
+ *   Q W E        E5 G5 B5      pan  -0.7   0  +0.7
+ *   A S D        E4 G4 B4
+ *   Z X C        E3 G3 B3
+ *
+ * QWE/ASD/ZXC is the primary binding because it exists on every keyboard,
+ * laptops included. The numpad is a secondary binding and only answers with
+ * NumLock on — with it off the numpad reports ArrowUp/Home/PageUp rather than
+ * digits, which is a keyboard quirk rather than something we can fix here.
+ */
+const GRID: ModeDef = {
+  id: 'grid',
+  name: 'Grid',
+  tagline: 'Nine cells. Short runs, and no room to guess.',
+  layout: 'grid',
+  ambientRootHz: 82.41, // E2 — the same E the cells are built from
+  symbols: [
+    {
+      id: 'gridNW',
+      glyph: 'Q',
+      name: 'top left',
+      colorVar: '--sym-g-nw',
+      toneHz: 659.25, // E5
+      pan: -0.7,
+      keys: ['q', 'Q', '7'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridN',
+      glyph: 'W',
+      name: 'top centre',
+      colorVar: '--sym-g-n',
+      toneHz: 783.99, // G5
+      pan: 0,
+      keys: ['w', 'W', '8'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridNE',
+      glyph: 'E',
+      name: 'top right',
+      colorVar: '--sym-g-ne',
+      toneHz: 987.77, // B5
+      pan: 0.7,
+      keys: ['e', 'E', '9'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridW',
+      glyph: 'A',
+      name: 'middle left',
+      colorVar: '--sym-g-w',
+      toneHz: 329.63, // E4
+      pan: -0.7,
+      keys: ['a', 'A', '4'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridC',
+      glyph: 'S',
+      name: 'centre',
+      colorVar: '--sym-g-c',
+      toneHz: 392.0, // G4
+      pan: 0,
+      keys: ['s', 'S', '5'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridE',
+      glyph: 'D',
+      name: 'middle right',
+      colorVar: '--sym-g-e',
+      toneHz: 493.88, // B4
+      pan: 0.7,
+      keys: ['d', 'D', '6'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridSW',
+      glyph: 'Z',
+      name: 'bottom left',
+      colorVar: '--sym-g-sw',
+      toneHz: 164.81, // E3
+      pan: -0.7,
+      keys: ['z', 'Z', '1'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridS',
+      glyph: 'X',
+      name: 'bottom centre',
+      colorVar: '--sym-g-s',
+      toneHz: 196.0, // G3
+      pan: 0,
+      keys: ['x', 'X', '2'],
+      mouseButton: null,
+    },
+    {
+      id: 'gridSE',
+      glyph: 'C',
+      name: 'bottom right',
+      colorVar: '--sym-g-se',
+      toneHz: 246.94, // B3
+      pan: 0.7,
+      keys: ['c', 'C', '3'],
+      mouseButton: null,
+    },
+  ],
+}
+
+export const MODES: readonly ModeDef[] = [ARROWS, CLICKS, GRID]
 
 export function getMode(id: ModeId): ModeDef {
   const mode = MODES.find((m) => m.id === id)

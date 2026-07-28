@@ -22,10 +22,19 @@ game ends when you do.
 |------|---------|--------------|-------|
 | **Arrows** | `up`, `down`, `left`, `right` | 2 bits | Rendered as the standard inverted-T key cluster |
 | **Clicks** | `left`, `right` | 1 bit | Two large pads |
+| **Grid** | nine cells, `gridNW`…`gridSE` | 3.17 bits | 3×3. `QWE/ASD/ZXC`, or nine pads on touch (v1.1) |
 
-Clicks mode is deliberately lower-entropy. A round-10 arrow sequence is
-much harder than a round-10 click sequence, so **leaderboards are per
+The modes are deliberately different densities. A round-10 grid sequence
+is far harder than a round-10 click sequence, so **leaderboards are per
 mode and never merged**. Don't "fix" this by averaging them.
+
+Grid's sound encodes its own layout: the column picks the note and the
+stereo position, the row picks the octave, so a cell tells you where it
+was in two independent ways. Its runs are shorter — expect roughly round
+6-9 against 8-12 for arrows — so grid players reach level 2-3 where
+arrows players reach 3-4. That is a consequence of the shared ladder and
+the shared timing curve, and it is accepted rather than corrected: one
+rule for speed, one ladder, separate boards.
 
 ---
 

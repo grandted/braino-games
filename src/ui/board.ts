@@ -109,6 +109,12 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   /* Input --------------------------------------------------------------- */
 
   function onKeyDown(event: KeyboardEvent): void {
+    // A modifier combination is a browser shortcut, not a game input. This
+    // matters from the moment letters are bound: without it, Ctrl+W or Cmd+W
+    // would register a press on its way to closing the tab, and we would be
+    // calling preventDefault() on a shortcut that isn't ours.
+    if (event.ctrlKey || event.metaKey || event.altKey) return
+
     const symbol = symbolForKey(mode, event.key)
     if (!symbol) return
     // Arrow keys scroll the page unless we say otherwise — and we do this
@@ -250,16 +256,29 @@ function createPad(mode: ModeDef, symbol: SymbolDef): HTMLElement {
   pad.setAttribute('role', 'img')
   pad.setAttribute('aria-label', symbol.name)
 
-  const glyph = document.createElement('span')
-  glyph.className = 'pad__glyph'
-  glyph.textContent = symbol.glyph
-  pad.append(glyph)
+  // A grid cell carries no glyph: it is identified by its colour and its
+  // position, and the letter below is the keyboard binding rather than a
+  // symbol. Every other layout draws the symbol itself.
+  if (mode.layout !== 'grid') {
+    const glyph = document.createElement('span')
+    glyph.className = 'pad__glyph'
+    glyph.textContent = symbol.glyph
+    pad.append(glyph)
+  }
 
   if (mode.layout === 'split') {
     const label = document.createElement('span')
     label.className = 'pad__label'
     label.textContent = symbol.name
     pad.append(label)
+  }
+
+  if (mode.layout === 'grid') {
+    // Hidden on touch, where a letter means nothing — see `.on-keys`.
+    const key = document.createElement('span')
+    key.className = 'pad__key on-keys'
+    key.textContent = symbol.glyph
+    pad.append(key)
   }
 
   return pad

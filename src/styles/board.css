@@ -33,6 +33,22 @@
   gap: 18px;
 }
 
+/* Nine cells. Source order fills the 3x3, so unlike the cluster this needs no
+   named areas. */
+.board--grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* The key that plays this cell. Teaches the binding on a keyboard; hidden on
+   touch, where colour and position identify a cell and a letter means nothing.
+   `.on-keys` is the same switch createHint() uses for device-specific text. */
+.pad__key {
+  font: 800 15px/1 var(--mono);
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+}
+
 /* Locked = playback running. Input is swallowed, and it looks it. */
 .board--locked {
   cursor: not-allowed;
@@ -107,6 +123,11 @@
 .board--split .pad {
   width: clamp(120px, 34vw, 210px);
   aspect-ratio: 4 / 3;
+}
+
+.board--grid .pad {
+  width: clamp(62px, 15vw, 96px);
+  aspect-ratio: 1;
 }
 
 .pad__glyph {
@@ -217,6 +238,21 @@
     /* Tall targets: in clicks mode these two are the whole game. */
     aspect-ratio: 3 / 4;
     max-height: 42svh;
+  }
+
+  .board--grid {
+    gap: 9px;
+    max-width: 420px;
+    margin-inline: auto;
+  }
+
+  .board--grid .pad {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  .board--grid .pad__glyph {
+    font-size: clamp(20px, 6vw, 34px);
   }
 
   .pad__glyph {

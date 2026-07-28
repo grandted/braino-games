@@ -155,13 +155,18 @@ export function createMenuScreen({
 
     // A preview of what you'll actually be pressing, in the colours the game
     // uses for them. Teaches the mode and gives the menu some colour.
+    // Nine letters in a row would be far too wide, so the grid previews as a
+    // miniature of itself, which is a truer picture anyway.
+    const isGrid = mode.layout === 'grid'
     const glyphs = document.createElement('span')
-    glyphs.className = 'mode-card__glyphs'
+    glyphs.className = isGrid
+      ? 'mode-card__glyphs mode-card__glyphs--grid'
+      : 'mode-card__glyphs'
     for (const symbol of mode.symbols) {
       const glyph = document.createElement('span')
       glyph.className = 'mode-card__glyph'
       glyph.style.setProperty('--sym', `var(${symbol.colorVar})`)
-      glyph.textContent = symbol.glyph
+      if (!isGrid) glyph.textContent = symbol.glyph
       glyphs.append(glyph)
     }
 

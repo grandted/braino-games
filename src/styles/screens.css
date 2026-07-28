@@ -103,6 +103,26 @@
   transform: translateY(-2px);
 }
 
+/* The grid previews as a miniature of itself rather than nine letters. */
+.mode-card__glyphs--grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+
+.mode-card__glyphs--grid .mode-card__glyph {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--sym);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--sym) 60%, transparent);
+}
+
+.mode-card:hover .mode-card__glyphs--grid .mode-card__glyph,
+.mode-card:focus-visible .mode-card__glyphs--grid .mode-card__glyph {
+  transform: none;
+}
+
 .mode-card__tagline {
   grid-column: 2 / -1;
   color: var(--text-dim);
@@ -111,10 +131,13 @@
 
 /* Your own record — a target long before the global board is in reach. */
 .menu-best {
-  font: 700 13px/1.4 var(--mono);
+  font: 700 13px/1.6 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-dim);
+  /* Three modes no longer fit one line on a phone. */
+  max-width: 42ch;
+  text-wrap: balance;
 }
 
 .menu-best strong {

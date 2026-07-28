@@ -36,8 +36,13 @@ information per step, so patterns turn brutal fast.
 **Clicks** — left and right mouse button. Longer runs, and a different
 kind of hard.
 
-On a phone both become virtual controls: four thumb pads for Arrows, two
-large ones for Clicks.
+**Grid** — a 3×3 of nine cells on `QWE/ASD/ZXC`. The hardest pattern
+space in the game, and the one where the sound does the most work: a
+cell's column sets its note and which ear it comes from, its row sets the
+octave. Higher on screen is literally higher.
+
+On a phone all three become virtual controls: four thumb pads for Arrows,
+two large ones for Clicks, nine for Grid.
 
 ## How it works
 
@@ -84,7 +89,7 @@ trying to be.
 phone play. Release candidate for 1.0.
 
 Roadmap:
-- v1.1 — additional modes (WASD, numpad, mixed)
+- v1.1 — more modes still (WASD, mixed keyboard/mouse)
 
 ## Docs
 
