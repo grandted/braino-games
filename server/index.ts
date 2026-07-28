@@ -12,16 +12,15 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { extname, join, normalize, resolve } from 'node:path'
-import { MODES, type ModeId } from '../src/game/modes.ts'
 import {
   DEFAULT_WINDOW,
   TOP_N,
   isTimeWindow,
   type TimeWindow,
-} from '../src/leaderboard/types.ts'
+} from '../src/shared/leaderboard/types.ts'
 import { openStore } from './db.ts'
 import { createRateLimit } from './rateLimit.ts'
-import { validateDraft } from './validate.ts'
+import { isKnownGame, validateDraft } from './validate.ts'
 
 const PORT = Number(process.env.TANGENT_PORT ?? 8787)
 
@@ -98,19 +97,25 @@ function getLeaderboard(
     return
   }
 
+  const game = url.searchParams.get('game')
+  if (!isKnownGame(game)) {
+    sendJson(res, 400, { error: 'unknown game' })
+    return
+  }
+
   const mode = url.searchParams.get('mode')
-  if (!isMode(mode)) {
-    sendJson(res, 400, { error: 'unknown mode' })
+  if (!mode) {
+    sendJson(res, 400, { error: 'missing mode' })
     return
   }
 
   const requested = url.searchParams.get('window') ?? DEFAULT_WINDOW
   const window: TimeWindow = isTimeWindow(requested) ? requested : DEFAULT_WINDOW
 
-  const entries = store.top(mode, window, TOP_N)
+  const entries = store.top(game, mode, window, TOP_N)
   // The board changes as people play; a stale cache would be worse than none.
   res.setHeader('cache-control', 'no-store')
-  sendJson(res, 200, { mode, window, entries })
+  sendJson(res, 200, { game, mode, window, entries })
 }
 
 async function postLeaderboard(
@@ -150,7 +155,7 @@ async function postLeaderboard(
     return
   }
 
-  const validation = validateDraft(parsed)
+  const validation = await validateDraft(parsed)
   if (!validation.ok) {
     sendJson(res, 422, { error: validation.reason })
     return
@@ -223,10 +228,6 @@ function clientKey(req: IncomingMessage): string {
     if (hop) return hop
   }
   return req.socket.remoteAddress ?? 'unknown'
-}
-
-function isMode(value: unknown): value is ModeId {
-  return MODES.some((mode) => mode.id === value)
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {

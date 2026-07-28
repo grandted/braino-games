@@ -25,7 +25,8 @@ import {
   type Entry,
   type LeaderboardProvider,
   type TimeWindow,
-} from '../leaderboard/index.ts'
+} from '../../../shared/leaderboard/index.ts'
+import { GAME_ID } from '../meta.ts'
 import { createBoard, type Board } from './board.ts'
 import { isGameKeystroke, isTypingInto } from './keys.ts'
 import { createHelix, type Helix } from './helix.ts'
@@ -192,7 +193,10 @@ export function createMenuScreen({
 
   // Your own record, so there's a target long before the global board is
   // in reach.
-  const bests = MODES.map((mode) => ({ mode, best: readBest(mode.id) })).filter(
+  const bests = MODES.map((mode) => ({
+    mode,
+    best: readBest(GAME_ID, mode.id),
+  })).filter(
     (entry) => entry.best !== null,
   )
   const personal = document.createElement('p')
@@ -732,6 +736,7 @@ export function createGameOverScreen({
 
       void provider
         .submit({
+          game: GAME_ID,
           nickname,
           mode: stats.mode,
           points: stats.points,
@@ -959,7 +964,7 @@ export function createLeaderboardScreen({
     renderMessage('Reading the board…', 'loading')
 
     try {
-      const entries = await provider.top(forMode.id, forWindow)
+      const entries = await provider.top(GAME_ID, forMode.id, forWindow)
       if (cancelled || ticket !== requestId) return
       renderEntries(entries)
     } catch (error) {

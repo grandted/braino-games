@@ -10,7 +10,7 @@
  * scores anyone else can see.
  */
 
-import type { ModeId } from '../game/modes.ts'
+import type { GameId, ModeKey } from './types.ts'
 
 const STORAGE_KEY = 'tangent:best:v1'
 
@@ -28,10 +28,15 @@ export interface RunRecord {
   readonly rounds: number
 }
 
-type Store = Partial<Record<ModeId, PersonalBest>>
+/** Keyed `game:mode`, so two games can share a mode name safely. */
+type Store = Record<string, PersonalBest>
 
-export function readBest(mode: ModeId): PersonalBest | null {
-  return read()[mode] ?? null
+function keyFor(game: GameId, mode: ModeKey): string {
+  return `${game}:${mode}`
+}
+
+export function readBest(game: GameId, mode: ModeKey): PersonalBest | null {
+  return read()[keyFor(game, mode)] ?? null
 }
 
 /**
@@ -39,10 +44,11 @@ export function readBest(mode: ModeId): PersonalBest | null {
  * it — the caller uses that to decide whether to make a fuss.
  */
 export function recordRun(
-  mode: ModeId,
+  game: GameId,
+  mode: ModeKey,
   run: RunRecord,
 ): { best: PersonalBest; improved: boolean } {
-  const previous = readBest(mode)
+  const previous = readBest(game, mode)
   // Points are the game's measure, so they are the measure here too.
   const improved = previous === null || run.points > previous.points
   if (!improved) return { best: previous, improved: false }
@@ -53,7 +59,7 @@ export function recordRun(
     rounds: run.rounds,
     achievedAt: new Date().toISOString(),
   }
-  write({ ...read(), [mode]: best })
+  write({ ...read(), [keyFor(game, mode)]: best })
   return { best, improved: true }
 }
 
@@ -70,8 +76,8 @@ function read(): Store {
     const parsed: unknown = JSON.parse(raw)
     if (typeof parsed !== 'object' || parsed === null) return {}
     const store: Store = {}
-    for (const [mode, value] of Object.entries(parsed)) {
-      if (isBest(value)) store[mode as ModeId] = value
+    for (const [key, value] of Object.entries(parsed)) {
+      if (isBest(value)) store[key] = value
     }
     return store
   } catch {

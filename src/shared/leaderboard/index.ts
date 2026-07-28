@@ -30,7 +30,9 @@ export {
 export type {
   Entry,
   EntryDraft,
+  GameId,
   LeaderboardProvider,
+  ModeKey,
   SubmitResult,
   TimeWindow,
 } from './types.ts'

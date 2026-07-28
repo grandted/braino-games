@@ -4,16 +4,34 @@ Context for Claude Code. Read this before making changes.
 
 ## What this is
 
-**Tangent** — a browser-based muscle-memory game. A sequence of inputs is
-shown, the player repeats it, the sequence grows by one each round. Four
-modes: arrow keys (4 symbols), mouse buttons (2), a 3×3 grid (9), and Pi
-(10 digits, and the only mode whose sequence is fixed rather than
-random — round N is the first N digits of π).
+**Mind Games** — a platform for small mind games in the browser. The
+landing page is a deck of cards, one per game; clicking a card opens that
+game, and a persistent back control returns to the deck.
 
-Adding a mode means adding a `ModeDef` to `game/modes.ts` and a layout to
-`styles/board.css`. Everything that enumerates modes — menu cards, digit
-shortcuts, leaderboard tabs, personal bests, server validation, the
-database — reads `MODES` and extends on its own. Keep it that way.
+**Tangent** is the first game: a sequence of inputs is shown, the player
+repeats it, and it grows by one each round. Four modes — arrow keys (4
+symbols), mouse buttons (2), a 3×3 grid (9), and Pi (10 digits, the only
+mode whose sequence is fixed rather than random).
+
+## The platform rules — these are what keep it a platform
+
+1. **The shell knows no game.** Nothing under `src/platform/` imports from
+   `src/games/`, except `registry.ts`, which exists precisely to be that
+   one wiring point.
+2. **A game knows no shell.** A game imports `platform/types.ts` for its
+   own type and nothing else. It is handed a container and a context, and
+   does as it likes inside them. It must not assume it is alone, or that
+   it starts at page load.
+3. **`src/shared/` knows no game.** The leaderboard is generic over
+   `game` and `mode`, both plain strings. A game narrows them back to its
+   own union in its own code.
+4. **A game cleans up completely.** `GameHandle.destroy()` must drop every
+   listener, timer and audio node. The shell reuses the container.
+
+**Adding a game**: write a `GameDefinition`, put it in
+`platform/registry.ts`, add its rules to `server/games/<id>.ts` and its id
+to the validator table in `server/validate.ts`. Nothing else changes —
+boards, personal bests and the deck all partition by game already.
 
 ## Vocabulary — read this before touching anything
 
@@ -96,8 +114,22 @@ limit).
 
 ```
 src/
-├── main.ts              entry, wires screens together
-├── game/
+├── main.ts                    platform entry: bootstrapping only
+├── platform/
+│   ├── types.ts               the contract every game implements
+│   ├── registry.ts            the game list — the one file a new game edits
+│   ├── shell.ts               routing (URL hash), mounting, back control
+│   └── landing.ts             the card deck
+├── styles/
+│   ├── base.css               tokens shared by the platform and every game
+│   └── platform.css           masthead, deck, shell chrome
+├── shared/
+│   └── leaderboard/           generic over game + mode
+└── games/
+    └── tangent/
+        ├── index.ts           GameDefinition + mount()
+        ├── meta.ts            the game id, needed by its own UI
+        ├── game/
 │   ├── engine.ts        state machine: idle→playback→input→result
 │   ├── sequence.ts      generation + validation
 │   ├── evolution.ts     the organism ladder: genomes, tiers, names

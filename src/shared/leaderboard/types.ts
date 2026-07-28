@@ -1,21 +1,30 @@
 /**
  * The leaderboard contract, shared verbatim by the browser and the server.
  *
- * `game/` never imports anything from this directory — the engine does not
- * know a leaderboard exists.
+ * Deliberately generic: `game` and `mode` are plain strings, so this module
+ * knows nothing about Tangent or any other game on the platform. A game's own
+ * code narrows them back to its own union where it needs to.
+ *
+ * A game's engine never imports anything from here either — it does not know a
+ * leaderboard exists.
  *
  * The sorting, window and nickname rules live here rather than in a provider
  * or in the server: both ends have to agree on them or the board the client
  * renders would not be the board the server thinks it served.
  */
 
-import type { ModeId } from '../game/modes.ts'
+/** Which game on the platform a run belongs to. */
+export type GameId = string
+/** A mode within that game. Its meaning is the game's business, not ours. */
+export type ModeKey = string
 
 export interface Entry {
   /** Server-assigned. Stable enough to highlight a row you just earned. */
   readonly id: string
+  /** Boards are partitioned by game first, then by mode. */
+  readonly game: GameId
   readonly nickname: string
-  readonly mode: ModeId
+  readonly mode: ModeKey
   /** Primary score. Speed is what separates the board. */
   readonly points: number
   /** Evolutionary tier reached — see game/evolution.ts. */
@@ -83,7 +92,7 @@ export interface LeaderboardProvider {
    */
   readonly label: string
   /** Highest first, capped at `TOP_N`. Rejects if the board is unreachable. */
-  top(mode: ModeId, window: TimeWindow): Promise<readonly Entry[]>
+  top(game: GameId, mode: ModeKey, window: TimeWindow): Promise<readonly Entry[]>
   submit(draft: EntryDraft): Promise<SubmitResult>
 }
 

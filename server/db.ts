@@ -8,17 +8,18 @@
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import type { ModeId } from '../src/game/modes.ts'
 import {
   TOP_N,
   windowCutoff,
   type Entry,
   type EntryDraft,
+  type GameId,
+  type ModeKey,
   type TimeWindow,
-} from '../src/leaderboard/types.ts'
+} from '../src/shared/leaderboard/types.ts'
 
 export interface Store {
-  top(mode: ModeId, window: TimeWindow, limit?: number): Entry[]
+  top(game: GameId, mode: ModeKey, window: TimeWindow, limit?: number): Entry[]
   insert(draft: EntryDraft, achievedAt: string): Entry
   /** All-time position of an entry within its mode, 1-based. */
   rankOf(entry: Entry): number
@@ -28,10 +29,11 @@ export interface Store {
 }
 
 /** Bumped when the schema changes. Recorded in the database itself. */
-const SCHEMA_VERSION = 3
+const SCHEMA_VERSION = 4
 
 interface Row {
   id: number
+  game: string
   nickname: string
   mode: string
   points: number
@@ -46,8 +48,8 @@ interface Row {
 
 /** Columns every read returns, in one place so the two selects cannot drift. */
 const COLUMNS = `
-  id, nickname, mode, points, level, rounds, avgReactionMs, fastestInputMs,
-  totalInputs, runDurationMs, achievedAt
+  id, game, nickname, mode, points, level, rounds, avgReactionMs,
+  fastestInputMs, totalInputs, runDurationMs, achievedAt
 `
 
 /**
@@ -62,12 +64,17 @@ export function openStore(path: string): Store {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true })
   const db = new DatabaseSync(path)
 
+  // Order matters, and it is the whole reason this is three steps rather than
+  // one: tables first, then migrations that add columns, and only then the
+  // indexes that reference those columns. Creating an index over a column a
+  // migration has not added yet fails outright on an existing database.
   db.exec(`
     pragma journal_mode = wal;
     pragma foreign_keys = on;
 
     create table if not exists leaderboardEntryV2 (
       id             integer primary key autoincrement,
+      game           text    not null default 'tangent',
       nickname       text    not null,
       mode           text    not null,
       points         integer not null,
@@ -80,13 +87,6 @@ export function openStore(path: string): Store {
       achievedAt     text    not null
     );
 
-    create index if not exists leaderboardEntryV2Rank
-      on leaderboardEntryV2 (mode, points desc, level desc, rounds desc,
-                             avgReactionMs asc, achievedAt asc);
-
-    create index if not exists leaderboardEntryV2AchievedAt
-      on leaderboardEntryV2 (mode, achievedAt);
-
     create table if not exists schemaMeta (
       key   text primary key,
       value text not null
@@ -95,10 +95,24 @@ export function openStore(path: string): Store {
 
   migrate(db)
 
+  // `create index if not exists` matches on *name*, so an index left over
+  // from an older schema would silently survive with its old columns and the
+  // definition here would be a lie. `migrate` drops them on a version change,
+  // which is what makes recreating them here truthful.
+  db.exec(`
+    create index if not exists leaderboardEntryV2Rank
+      on leaderboardEntryV2 (game, mode, points desc, level desc, rounds desc,
+                             avgReactionMs asc, achievedAt asc);
+
+    create index if not exists leaderboardEntryV2AchievedAt
+      on leaderboardEntryV2 (game, mode, achievedAt);
+  `)
+
   const selectWindowed = db.prepare(`
     select ${COLUMNS}
       from leaderboardEntryV2
-     where mode = ?
+     where game = ?
+       and mode = ?
        and achievedAt >= ?
      order by ${RANK_ORDER}
      limit ?
@@ -107,16 +121,17 @@ export function openStore(path: string): Store {
   const selectAllTime = db.prepare(`
     select ${COLUMNS}
       from leaderboardEntryV2
-     where mode = ?
+     where game = ?
+       and mode = ?
      order by ${RANK_ORDER}
      limit ?
   `)
 
   const insertEntry = db.prepare(`
     insert into leaderboardEntryV2
-      (nickname, mode, points, level, rounds, avgReactionMs, fastestInputMs,
-       totalInputs, runDurationMs, achievedAt)
-    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (game, nickname, mode, points, level, rounds, avgReactionMs,
+       fastestInputMs, totalInputs, runDurationMs, achievedAt)
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   // The same five keys as RANK_ORDER, unrolled into a strict "is better than"
@@ -128,7 +143,8 @@ export function openStore(path: string): Store {
   const countBetter = db.prepare(`
     select count(*) as better
       from leaderboardEntryV2
-     where mode = ?
+     where game = ?
+       and mode = ?
        and (points > ?
             or (points = ? and level > ?)
             or (points = ? and level = ? and rounds > ?)
@@ -138,17 +154,18 @@ export function openStore(path: string): Store {
   `)
 
   return {
-    top(mode, window, limit = TOP_N) {
+    top(game, mode, window, limit = TOP_N) {
       const cutoff = windowCutoff(window)
       const rows =
         cutoff === null
-          ? selectAllTime.all(mode, limit)
-          : selectWindowed.all(mode, cutoff, limit)
+          ? selectAllTime.all(game, mode, limit)
+          : selectWindowed.all(game, mode, cutoff, limit)
       return (rows as unknown as Row[]).map(toEntry)
     },
 
     insert(draft, achievedAt) {
       const result = insertEntry.run(
+        draft.game,
         draft.nickname,
         draft.mode,
         draft.points,
@@ -171,6 +188,7 @@ export function openStore(path: string): Store {
     rankOf(entry) {
       const { points, level, rounds, avgReactionMs, achievedAt } = entry
       const row = countBetter.get(
+        entry.game,
         entry.mode,
         points,
         points,
@@ -218,6 +236,30 @@ function migrate(db: DatabaseSync): void {
     db.exec('drop table if exists leaderboardEntry')
   }
 
+  if (version < 4) {
+    // v1.0 turned the board into a platform: rows are partitioned by game
+    // first. Everything that existed before belongs to Tangent, and the
+    // column default means existing rows are correct the moment it is added —
+    // no row is rewritten and no score is touched.
+    const columns = db
+      .prepare('pragma table_info(leaderboardEntryV2)')
+      .all() as unknown as { name: string }[]
+    if (!columns.some((column) => column.name === 'game')) {
+      db.exec(
+        "alter table leaderboardEntryV2 add column game text not null default 'tangent'",
+      )
+    }
+  }
+
+  if (version !== SCHEMA_VERSION) {
+    // Indexes are rebuilt rather than patched: dropping them here is what
+    // lets the definitions above be recreated as written.
+    db.exec(`
+      drop index if exists leaderboardEntryV2Rank;
+      drop index if exists leaderboardEntryV2AchievedAt;
+    `)
+  }
+
   if (version !== SCHEMA_VERSION) {
     db.prepare(
       `insert into schemaMeta (key, value) values ('version', ?)
@@ -229,8 +271,9 @@ function migrate(db: DatabaseSync): void {
 function toEntry(row: Row): Entry {
   return {
     id: String(row.id),
+    game: row.game,
     nickname: row.nickname,
-    mode: row.mode as ModeId,
+    mode: row.mode,
     points: row.points,
     level: row.level,
     rounds: row.rounds,

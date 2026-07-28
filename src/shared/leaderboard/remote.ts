@@ -11,11 +11,12 @@
  * ever played".
  */
 
-import type { ModeId } from '../game/modes.ts'
 import {
   type Entry,
   type EntryDraft,
+  type GameId,
   type LeaderboardProvider,
+  type ModeKey,
   type SubmitResult,
   type TimeWindow,
 } from './types.ts'
@@ -36,8 +37,8 @@ export function createRemoteProvider(): LeaderboardProvider {
   return {
     label: 'Global best',
 
-    async top(mode: ModeId, window: TimeWindow) {
-      const query = new URLSearchParams({ mode, window })
+    async top(game: GameId, mode: ModeKey, window: TimeWindow) {
+      const query = new URLSearchParams({ game, mode, window })
       const body = await request<{ entries: Entry[] }>(`${ENDPOINT}?${query}`, {
         method: 'GET',
       })

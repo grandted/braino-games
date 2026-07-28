@@ -1,4 +1,7 @@
-/* Design tokens + page shell. Every colour in the app comes from here. */
+/* Design tokens and page shell, shared by Mind Games and every game on it.
+ *
+ * A game's own styles live under `games/<id>/styles/`. Anything in here is
+ * platform-wide: if a second game would want it, it belongs here. */
 
 :root {
   color-scheme: dark;
@@ -98,6 +101,13 @@ body {
   place-items: center;
   padding: 24px;
   padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+/* The deck needs room to breathe at the top rather than being pinned to the
+   centre of a tall screen. */
+body[data-view='deck'] #app {
+  place-items: start center;
+  padding-block: clamp(28px, 7vh, 76px);
 }
 
 /* Device-appropriate hint text — see createHint() in ui/screens.ts. */

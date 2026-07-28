@@ -1,18 +1,23 @@
-# Tangent
+# Mind Games
 
-A pattern grows one step at a time. Keep it in your hands, not your head.
+A platform for small mind games in the browser. The landing page is a deck
+of cards — one card per game. Pick one, play it, and the back control
+returns you to the deck.
 
-Tangent is a muscle-memory game for the browser. Watch the pattern, play
-it back, and watch it grow by one every round. Every input you get right
-bonds a base pair of DNA — fill a genome and you evolve.
+Built with no runtime dependencies at either end.
 
-*tangent* — Swedish for a key on a keyboard.
+## Games
+
+**[Tangent](#tangent)** — a pattern grows one step at a time. Keep it in
+your hands, not your head. *Ready.*
+
+Two more slots sit face down on the deck, waiting.
 
 ## Play
 
 ```bash
 npm install
-npm run dev         # the game, port 5173
+npm run dev         # the platform, port 5173
 npm run dev:server  # the leaderboard, port 8787
 ```
 
@@ -28,7 +33,17 @@ npm start           # builds, then serves the game and the API on 8787
 To play on a phone over your local network, run `npm run dev -- --host`
 and open the printed address.
 
-## Modes
+---
+
+## Tangent
+
+Watch the pattern, play it back, and watch it grow by one every round.
+Every input you get right bonds a base pair of DNA — fill a genome and you
+evolve.
+
+*tangent* — Swedish for a key on a keyboard.
+
+### Modes
 
 **Arrows** — four directions, in the standard cluster. Twice the
 information per step, so patterns turn brutal fast.
