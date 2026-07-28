@@ -27,6 +27,7 @@ import {
   type TimeWindow,
 } from '../leaderboard/index.ts'
 import { createBoard, type Board } from './board.ts'
+import { isGameKeystroke, isTypingInto } from './keys.ts'
 import { createHelix, type Helix } from './helix.ts'
 import type { Tones } from './audio.ts'
 
@@ -80,6 +81,10 @@ function createMuteButton(tones: Tones): {
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    // The mute shortcut listens on window so it works from any screen, which
+    // means it also hears the nickname field. Typing "m" is a letter, not a
+    // shortcut.
+    if (!isGameKeystroke(event)) return
     if (event.key !== 'm' && event.key !== 'M') return
     event.preventDefault()
     if (event.repeat) return
@@ -226,6 +231,8 @@ export function createMenuScreen({
 
   // Roving focus so arrow keys work as well as tab.
   function onKeyDown(event: KeyboardEvent): void {
+    if (!isGameKeystroke(event)) return
+
     const digit = Number(event.key)
     if (Number.isInteger(digit) && digit >= 1 && digit <= MODES.length) {
       event.preventDefault()
@@ -393,6 +400,7 @@ export function createGameScreen({
   )
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (!isGameKeystroke(event)) return
     if (event.key !== 'Escape') return
     event.preventDefault()
     onExit()
@@ -718,6 +726,9 @@ export function createGameOverScreen({
   // Retry must cost exactly one input, whichever device the player is on:
   // any key, or a click anywhere that isn't a control.
   function onKeyDown(event: KeyboardEvent): void {
+    // Typing a nickname is not a retry. Checked on the event target first,
+    // which is correct even if focus is moving.
+    if (isTypingInto(event.target)) return
     if (event.key === 'Tab' || MODIFIER_KEYS.has(event.key)) return
     // 'm' belongs to the mute toggle on every screen, this one included.
     if (event.key === 'm' || event.key === 'M') return
@@ -726,7 +737,8 @@ export function createGameOverScreen({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null
-    // Typing a nickname is not a retry.
+    // Belt and braces: the Save button is inside the form but isn't a text
+    // field, so it needs the container check rather than the typing check.
     if (focused?.closest('.submit')) return
     // Enter and space belong to whichever button has focus — Retry is focused
     // by default, so this is still one key to play again, just via the button.
@@ -969,6 +981,8 @@ export function createLeaderboardScreen({
   }
 
   function onKeyDown(event: KeyboardEvent): void {
+    if (!isGameKeystroke(event)) return
+
     if (event.key === 'Escape') {
       event.preventDefault()
       onBack()

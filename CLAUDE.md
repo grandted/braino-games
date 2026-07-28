@@ -94,6 +94,7 @@ src/
 │   ├── screens.ts       menu / game / gameover / leaderboard
 │   ├── board.ts         renders the pad, flash animation, all input
 │   ├── helix.ts         the 3D DNA strand (genome progress)
+│   ├── keys.ts          guards every global key handler shares
 │   └── audio.ts         synthesis, mix chain, reverb, ambient bed
 ├── leaderboard/
 │   ├── types.ts         Provider interface, Entry, windows, shared rules
@@ -158,7 +159,13 @@ compares them; run it after any change to the order.
 9. **An unbonded helix rung never shows a symbol colour.** The strand sits
    directly above the pads; colouring an unsolved rung would put the
    answer on screen. Colour arrives only on bonding.
-10. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
+10. **A global shortcut must never fire while the player is typing.**
+    Key handling lives on `window` so a pad responds without clicking
+    first — which also puts every shortcut one keystroke away from the
+    nickname field. Every `window` keydown handler calls
+    `isGameKeystroke()` from `ui/keys.ts` before anything else. `m` was
+    eaten by the mute toggle before this existed.
+11. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
    touchscreen has no right button — a tap reads which *pad* it hit. That
    rule lives in `resolvePointer()` in `ui/board.ts`; change it there and
    nowhere else.

@@ -20,6 +20,7 @@ import {
   type SymbolDef,
   type SymbolId,
 } from '../game/modes.ts'
+import { isGameKeystroke } from './keys.ts'
 
 /**
  * The impact ring outlives the pressed state on purpose — the pad springs back
@@ -109,11 +110,9 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   /* Input --------------------------------------------------------------- */
 
   function onKeyDown(event: KeyboardEvent): void {
-    // A modifier combination is a browser shortcut, not a game input. This
-    // matters from the moment letters are bound: without it, Ctrl+W or Cmd+W
-    // would register a press on its way to closing the tab, and we would be
-    // calling preventDefault() on a shortcut that isn't ours.
-    if (event.ctrlKey || event.metaKey || event.altKey) return
+    // Not ours if the player is typing, or if a modifier makes it a browser
+    // shortcut — see ui/keys.ts.
+    if (!isGameKeystroke(event)) return
 
     const symbol = symbolForKey(mode, event.key)
     if (!symbol) return
