@@ -199,19 +199,39 @@
   opacity: 1;
 }
 
-/* Genome complete: a wave of light runs the length of the strand. */
+/* Genome complete: a wave of light runs the length of the strand, and the
+   whole thing swells. Matched to the level-up cue rather than half its
+   length, so the strand is part of the moment instead of a footnote. */
+.helix.is-evolving {
+  animation: helix-swell 900ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .helix.is-evolving .helix__rung {
   animation:
     helix-spin var(--helix-spin) linear infinite,
-    helix-surge 600ms ease-out;
+    helix-surge 900ms ease-out;
   animation-delay: calc(var(--i) * var(--helix-stagger)),
-    calc(var(--i) * 12ms);
+    calc(var(--i) * 14ms);
   animation-play-state: running, running;
 }
 
+@keyframes helix-swell {
+  0%,
+  100% {
+    transform: none;
+  }
+  30% {
+    transform: scale(1.13);
+  }
+}
+
 @keyframes helix-surge {
-  40% {
-    filter: brightness(2.6) saturate(1.4);
+  0%,
+  100% {
+    filter: none;
+  }
+  30% {
+    filter: brightness(4) saturate(1.7);
   }
 }
 
@@ -332,6 +352,7 @@
 @media (prefers-reduced-motion: reduce) {
   .helix,
   .helix.is-live .helix__rung,
+  .helix.is-evolving,
   .helix.is-evolving .helix__rung {
     animation: none;
   }

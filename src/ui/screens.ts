@@ -287,8 +287,8 @@ export interface GameScreen extends Screen {
   /** How many rounds until the next organism. */
   setNextLevel(roundsAway: number, organism: string): void
   setPoints(points: number): void
-  /** A genome completed: announce the new organism and change the palette. */
-  evolve(level: number, organism: string): void
+  /** A genome completed: announce the level reached and change the palette. */
+  evolve(level: number): void
   /** Past the named ladder the game stops looking like itself. */
   setAnomaly(anomaly: boolean): void
   /** A one-off flourish for something rare, like a free life. */
@@ -360,10 +360,25 @@ export function createGameScreen({
   progress.className = 'progress'
   progress.setAttribute('aria-hidden', 'true')
 
-  // Sits over the board for the length of the evolution cue, then clears.
-  const banner = document.createElement('p')
-  banner.className = 'evolve-banner'
-  banner.setAttribute('aria-hidden', 'true')
+  // The level-up announcement. Absolutely positioned over the play area, so
+  // a full-screen celebration never reflows the board underneath it.
+  const levelUp = document.createElement('div')
+  levelUp.className = 'levelup'
+  levelUp.setAttribute('aria-hidden', 'true')
+
+  const flash = document.createElement('span')
+  flash.className = 'levelup__flash'
+  const ringOne = document.createElement('span')
+  ringOne.className = 'levelup__ring'
+  const ringTwo = document.createElement('span')
+  ringTwo.className = 'levelup__ring levelup__ring--late'
+
+  const levelUpLabel = document.createElement('p')
+  levelUpLabel.className = 'levelup__label'
+  const levelUpName = document.createElement('p')
+  levelUpName.className = 'levelup__name'
+
+  levelUp.append(flash, ringOne, ringTwo, levelUpLabel, levelUpName)
 
   // The DNA strand: between the level info and the pads, as asked.
   const helix = createHelix(mode)
@@ -391,7 +406,7 @@ export function createGameScreen({
 
   element.append(
     header,
-    banner,
+    levelUp,
     helix.element,
     board.element,
     progress,
@@ -458,13 +473,15 @@ export function createGameScreen({
       }, TIMING.nextRoundDelayMs)
     },
 
-    evolve(value, organism) {
-      // The organism the run just *became* is the one after the genome that
-      // completed, which setEvolution paints on the next round event.
-      const next = organismFor(value + 1)
-      banner.textContent = `${organism} → ${next.name}`
+    evolve(value) {
+      // `value` is the level just *completed*, so the one the run became — and
+      // the one worth announcing — is the next one up.
+      const reached = value + 1
+      const next = organismFor(reached)
+      levelUpLabel.textContent = `Level ${reached}`
+      levelUpName.textContent = next.name
       // Start the backdrop moving now rather than waiting for the next round,
-      // so the colour change and the bloom are one moment instead of two.
+      // so the colour change and the burst are one moment instead of two.
       element.style.setProperty('--level-hue', String(next.hue))
       helix.evolve()
       element.classList.remove('is-evolving')
@@ -472,7 +489,7 @@ export function createGameScreen({
       element.classList.add('is-evolving')
       window.setTimeout(() => {
         element.classList.remove('is-evolving')
-      }, TIMING.nextRoundDelayMs)
+      }, TIMING.levelUpCueMs)
     },
 
     setStatus(text, tone) {

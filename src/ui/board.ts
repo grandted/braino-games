@@ -101,11 +101,11 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   /** Separate from `timers`: the ring runs longer than the pressed state. */
   const impacts = new Map<SymbolId, number>()
 
-  for (const symbol of mode.symbols) {
-    const pad = createPad(mode, symbol)
+  mode.symbols.forEach((symbol, index) => {
+    const pad = createPad(mode, symbol, index)
     pads.set(symbol.id, pad)
     element.append(pad)
-  }
+  })
 
   /* Input --------------------------------------------------------------- */
 
@@ -247,10 +247,16 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   }
 }
 
-function createPad(mode: ModeDef, symbol: SymbolDef): HTMLElement {
+function createPad(
+  mode: ModeDef,
+  symbol: SymbolDef,
+  index: number,
+): HTMLElement {
   const pad = document.createElement('div')
   pad.className = `pad pad--${symbol.id}`
   pad.dataset.symbol = symbol.id
+  // Position in the mode, so celebrations can stagger across the pads.
+  pad.style.setProperty('--i', String(index))
   pad.style.setProperty('--sym', `var(${symbol.colorVar})`)
   pad.setAttribute('role', 'img')
   pad.setAttribute('aria-label', symbol.name)

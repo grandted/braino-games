@@ -253,6 +253,27 @@ exactly one board, it is global, and it lives on the server. This is the arcade
 cabinet's "your best" — a target for the overwhelming majority of runs that will
 never trouble the global top twenty.
 
+### The level-up
+
+Reaching a new level is the game's milestone moment and it takes the whole
+screen: a flash of light, two shockwaves in the new organism's colour, the
+level number at full size with the organism named beneath it, a ripple across
+the pads in board order, and the strand swelling as its genome completes.
+
+It is an **overlay**, absolutely positioned and `pointer-events: none`, so it
+reflows nothing and can never swallow an input.
+
+The cue runs 950ms against a runway of 1020ms — the engine already waits
+`nextRoundDelayMs` (600) before the next round and `playbackLeadInMs` (420)
+before its first flash. So the celebration is over exactly when the player
+needs to be watching the pads again, and **invariant 5 still holds**: nothing
+is delayed, because this is an overlay rather than a countdown. A test asserts
+the cue never outgrows that runway.
+
+The pad ripple staggers at 35ms rather than anything larger: Grid has nine
+pads, and much beyond that the last one is still moving when the first symbol
+flashes.
+
 ### The look
 
 Pads are lit from above and seated on a shadow, and travel down onto it when

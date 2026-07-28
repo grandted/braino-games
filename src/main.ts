@@ -156,7 +156,7 @@ function playMode(mode: ModeDef): void {
         // The Tetris moment: a genome completed, so the run changes species.
         screen.setStatus('evolved', 'good')
         screen.setPoints(event.totalPoints)
-        screen.evolve(event.level, event.organism)
+        screen.evolve(event.level)
         tones.evolve()
         tones.setAmbienceLevel(event.level + 1)
         break

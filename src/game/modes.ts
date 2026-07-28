@@ -316,6 +316,14 @@ export const TIMING = {
   inputFlashMs: 150,
   /** Fail cue plays before the gameover screen appears. */
   failCueMs: 850,
+  /**
+   * The level-up celebration. Fits inside the runway the engine already
+   * leaves — the next round starts at `nextRoundDelayMs` and its first flash
+   * only lands `playbackLeadInMs` after that, so a cue up to ~1020ms is over
+   * before the player has to be watching the pads again. It delays nothing:
+   * invariant 5 still holds, because this is an overlay, not a countdown.
+   */
+  levelUpCueMs: 950,
   /** Playback flash curve: clamp(520 - 25 * (round - 1), 180, 520). */
   flashMaxMs: 520,
   flashMinMs: 180,

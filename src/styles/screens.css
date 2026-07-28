@@ -206,16 +206,18 @@
 
 /* Evolution: the wash blooms once, then settles back to barely-there. */
 .screen--game.is-evolving::before {
-  animation: level-bloom 900ms ease-out;
+  animation: level-bloom 950ms ease-out;
 }
 
 @keyframes level-bloom {
   0%,
   100% {
     filter: none;
+    transform: none;
   }
-  28% {
-    filter: brightness(2.6) saturate(1.6);
+  22% {
+    filter: brightness(4.2) saturate(1.8);
+    transform: scale(1.06);
   }
 }
 
@@ -306,44 +308,253 @@
     background 900ms ease;
 }
 
-/* The Tetris moment: announced here, and swept along the strand by helix.css. */
-.evolve-banner {
-  font: 800 clamp(18px, 4vw, 26px) / 1 var(--sans);
-  letter-spacing: -0.02em;
-  text-transform: lowercase;
-  color: var(--ok);
-  min-height: 1em;
+/* The level-up ------------------------------------------------------------
+ * The moment has ~1020ms of runway before the next round's first flash, and
+ * it used to spend 600ms of that on one line of small text. Now it takes the
+ * whole screen: a flash, two shockwaves, and the level you just reached.
+ *
+ * Absolutely positioned, so none of it reflows the board underneath, and
+ * pointer-events: none so it can never eat an input.
+ */
+
+.levelup {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-content: center;
+  place-items: center;
+  gap: 6px;
+  pointer-events: none;
   opacity: 0;
 }
 
-.screen--game.is-evolving .evolve-banner {
-  animation: evolve-in 600ms ease-out;
+.levelup__flash,
+.levelup__ring {
+  grid-area: 1 / 1;
+  pointer-events: none;
 }
 
-.screen--game.is-evolving .evolution__name,
-.screen--game.is-evolving .hud__points {
-  animation: evolve-pop 600ms ease-out;
+/* A single frame of light across the whole play area. */
+.levelup__flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    hsl(var(--level-hue) 90% 70% / 0.55),
+    transparent 60%
+  );
+  opacity: 0;
 }
 
-@keyframes evolve-in {
-  0% {
-    opacity: 0;
-    transform: translateY(8px) scale(0.9);
-  }
-  30%,
-  70% {
+/* The shockwave. Two of them, the second trailing, which reads as a pulse
+   rather than a single expanding circle. */
+.levelup__ring {
+  width: min(46vmin, 340px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 3px solid hsl(var(--level-hue) 90% 68%);
+  box-shadow:
+    0 0 40px hsl(var(--level-hue) 90% 62% / 0.55),
+    inset 0 0 40px hsl(var(--level-hue) 90% 62% / 0.35);
+  opacity: 0;
+  transform: scale(0.2);
+}
+
+.levelup__label {
+  grid-area: 1 / 1;
+  font-size: clamp(38px, 11vw, 78px);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  color: hsl(var(--level-hue) 92% 78%);
+  text-shadow:
+    0 0 30px hsl(var(--level-hue) 90% 60% / 0.85),
+    0 6px 40px rgb(0 0 0 / 0.6);
+  opacity: 0;
+  transform: translateY(-14px);
+}
+
+.levelup__name {
+  grid-area: 1 / 1;
+  margin-top: clamp(52px, 13vw, 96px);
+  font: 800 clamp(15px, 3.6vw, 22px) / 1 var(--mono);
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-shadow: 0 2px 24px rgb(0 0 0 / 0.8);
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.screen--game.is-evolving .levelup {
+  animation: levelup-hold 950ms ease-out;
+}
+
+.screen--game.is-evolving .levelup__flash {
+  animation: levelup-flash 420ms ease-out;
+}
+
+.screen--game.is-evolving .levelup__ring {
+  animation: levelup-ring 880ms cubic-bezier(0.15, 0.7, 0.25, 1);
+}
+
+.screen--game.is-evolving .levelup__ring--late {
+  animation-delay: 150ms;
+}
+
+.screen--game.is-evolving .levelup__label {
+  animation: levelup-label 950ms cubic-bezier(0.16, 1.1, 0.3, 1);
+}
+
+.screen--game.is-evolving .levelup__name {
+  animation: levelup-name 950ms ease-out 110ms;
+}
+
+@keyframes levelup-hold {
+  0%,
+  88% {
     opacity: 1;
-    transform: none;
   }
   100% {
     opacity: 0;
   }
 }
 
+@keyframes levelup-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes levelup-ring {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.9);
+  }
+}
+
+@keyframes levelup-label {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.55);
+  }
+  35% {
+    opacity: 1;
+    transform: translateY(-14px) scale(1.06);
+  }
+  55%,
+  80% {
+    opacity: 1;
+    transform: translateY(-14px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1.04);
+  }
+}
+
+@keyframes levelup-name {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  30%,
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* The pads answer too, rippling in the order they sit on the board. */
+.screen--game.is-evolving .pad {
+  animation: pad-levelup 620ms ease-out;
+  /* 35ms, not more: Grid has nine pads, and at 55ms the last one would still
+     be moving when the next round's first flash lands. */
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+@keyframes pad-levelup {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: translateY(-9px) scale(1.04);
+    border-color: hsl(var(--level-hue) 88% 66%);
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 0.3),
+      0 0 0 5px hsl(var(--level-hue) 90% 62% / 0.3),
+      0 0 44px hsl(var(--level-hue) 90% 60% / 0.5),
+      0 12px 0 -1px rgb(0 0 0 / 0.5);
+  }
+}
+
+.screen--game.is-evolving .evolution__name,
+.screen--game.is-evolving .hud__points {
+  animation: evolve-pop 700ms ease-out;
+}
+
 @keyframes evolve-pop {
-  50% {
-    transform: scale(1.14);
-    color: var(--ok);
+  45% {
+    transform: scale(1.2);
+    color: hsl(var(--level-hue) 90% 72%);
+  }
+}
+
+/*
+ * Reduced motion: no travel, no scaling, no shockwave. The announcement still
+ * arrives and the screen still flushes with the new organism's colour, which
+ * is the information; only the movement goes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .screen--game.is-evolving .levelup__ring {
+    animation: none;
+  }
+
+  .screen--game.is-evolving .levelup__flash {
+    animation: levelup-flash 620ms ease-out;
+  }
+
+  .screen--game.is-evolving .levelup__label,
+  .screen--game.is-evolving .levelup__name {
+    animation: levelup-fade 950ms ease-out;
+  }
+
+  @keyframes levelup-fade {
+    0%,
+    100% {
+      opacity: 0;
+      transform: none;
+    }
+    20%,
+    80% {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .screen--game.is-evolving .pad,
+  .screen--game.is-evolving .evolution__name,
+  .screen--game.is-evolving .hud__points {
+    animation: none;
   }
 }
 
@@ -425,11 +636,6 @@
 
   .screen--game.is-anomaly {
     filter: invert(1) hue-rotate(180deg) saturate(0.4);
-  }
-
-  .screen--game.is-evolving .evolve-banner {
-    animation: none;
-    opacity: 1;
   }
 
   .screen--game.is-evolving .evolution__name,
