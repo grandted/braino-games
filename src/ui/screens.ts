@@ -126,7 +126,10 @@ export function createMenuScreen({
   const strand = createHelix(MODES[0])
   strand.element.classList.add('helix--menu')
   strand.setLive(true)
-  strand.setGenome(23, 36, 285)
+  // Deferred: the strand reads its rung count from CSS, which only answers
+  // once the element is in the document. Filling it now would pin it to the
+  // desktop count on every device.
+  queueMicrotask(() => strand.setGenome(23, 36, 285))
 
   const subtitle = document.createElement('p')
   subtitle.className = 'subtitle'
@@ -560,12 +563,13 @@ export function createGameOverScreen({
   const strand = createHelix(mode)
   strand.element.classList.add('helix--result')
   const finalGenome = genomeProgress(stats.rounds, stats.basePairs)
-  strand.setGenome(
-    finalGenome.bonded,
-    finalGenome.genome,
-    organismFor(stats.level).hue,
+  const finalOrganism = organismFor(stats.level)
+  strand.setAnomaly(finalOrganism.anomaly)
+  // Deferred for the same reason as the menu strand: the rung count comes
+  // from CSS and CSS has nothing to say about a detached element.
+  queueMicrotask(() =>
+    strand.setGenome(finalGenome.bonded, finalGenome.genome, finalOrganism.hue),
   )
-  strand.setAnomaly(organismFor(stats.level).anomaly)
 
   const record = document.createElement('p')
   record.className = best.improved ? 'over__record is-new' : 'over__record'
