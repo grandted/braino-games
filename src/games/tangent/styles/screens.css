@@ -160,7 +160,11 @@
 .screen--game,
 .screen--over {
   width: 100%;
-  min-height: calc(100svh - 48px);
+  /* Exactly the viewport less #app's own frame — never a literal. The frame
+     grows on a notched phone (safe-area insets), and a stale constant here
+     makes the screen taller than the room it has, which shows up as a few
+     pixels of scroll and a strip of bare canvas under the pads. */
+  min-height: calc(100svh - var(--app-pad-block));
   justify-content: center;
 }
 
@@ -1137,8 +1141,10 @@
 
 @media (pointer: coarse) {
   #app {
-    padding: 14px;
-    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    /* Tighter frame on a phone. Only the inputs change — the padding itself
+       and the screens' height both derive from these. */
+    --app-pad-x: 14px;
+    --app-pad-y: 14px;
   }
 
   .screen {
@@ -1149,7 +1155,7 @@
     justify-content: flex-start;
     gap: clamp(10px, 1.8vh, 20px);
     padding-block: 0;
-    min-height: calc(100svh - 28px);
+    /* min-height comes from the rule above, which tracks the frame itself. */
   }
 
   .screen--game .board {

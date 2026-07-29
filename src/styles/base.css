@@ -93,14 +93,51 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Safari honours touch-action on the element a touch actually lands on far
+   more reliably than one it would have to inherit from an ancestor, so
+   everything tappable states it for itself instead of trusting the rule on
+   body. Without this, two quick taps — which is simply how you enter a
+   repeated symbol — zoom iOS in mid-round.
+   `manipulation` is the narrow tool here: it drops the double-tap gesture and
+   leaves pinch zoom alone, that one being an accessibility affordance and not
+   ours to take. The pads go further and use `none` (board.css); they are
+   after this file in the cascade, so they still win. */
+button,
+a,
+input,
+label,
+summary,
+[role='button'],
+.screen,
+.btn,
+.tab,
+.card,
+.mode-card,
+.entry {
+  touch-action: manipulation;
+}
+
 #app {
+  /* The frame, as custom properties, because the game screens subtract it
+     back out to fill the viewport exactly (see .screen--game in
+     games/tangent/styles/screens.css). Writing the total as a literal there
+     is what put a scrollbar and a strip of bare canvas at the bottom of every
+     notched phone: the literal said 48px, but a home indicator makes the
+     bottom inset 34, so the screen came out ~10px taller than the space it
+     had. Anything that changes the padding must change it here, and only
+     here. */
+  --app-pad-x: 24px;
+  --app-pad-y: 24px;
+  --app-pad-top: max(var(--app-pad-y), env(safe-area-inset-top));
+  --app-pad-bottom: max(var(--app-pad-y), env(safe-area-inset-bottom));
+  --app-pad-block: calc(var(--app-pad-top) + var(--app-pad-bottom));
+
   /* svh, not dvh: the small viewport is the one that's always visible, so the
      pads don't jump when mobile browser chrome slides away mid-round. */
   min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: 24px;
-  padding-bottom: max(24px, env(safe-area-inset-bottom));
+  padding: var(--app-pad-top) var(--app-pad-x) var(--app-pad-bottom);
 }
 
 /* The deck needs room to breathe at the top rather than being pinned to the
