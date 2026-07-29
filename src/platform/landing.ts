@@ -25,14 +25,14 @@ export function createLanding(onOpen: (game: GameDefinition) => void): Landing {
   const title = document.createElement('h1')
   title.className = 'masthead__title'
   // Split so the lockup can be styled as two lines rather than one long one.
-  title.innerHTML = '<span>Tiny Brain</span><span>Games</span>'
+  title.innerHTML = '<span>Braino</span><span>Games</span>'
 
   const rule = document.createElement('span')
   rule.className = 'masthead__rule'
 
   const subtitle = document.createElement('p')
   subtitle.className = 'masthead__subtitle'
-  subtitle.textContent = 'tinybrain.games — small games for a sharp head'
+  subtitle.textContent = 'braino.games — small games for a sharp head'
 
   header.append(title, rule, subtitle)
 

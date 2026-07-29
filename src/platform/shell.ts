@@ -1,5 +1,5 @@
 /**
- * The Tiny Brain Games shell: what is on screen, and how you get back.
+ * The Braino Games shell: what is on screen, and how you get back.
  *
  * Routing is the URL hash, so the browser's own back button works and a game
  * can be linked to directly. `#/` is the deck; `#/tangent` is a game.
@@ -58,7 +58,7 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
     clearStage()
     document.body.dataset.view = 'deck'
     document.body.style.removeProperty('--game-hue')
-    document.title = 'Tiny Brain Games'
+    document.title = 'Braino Games'
     landing = createLanding((game) => navigate(`/${game.id}`))
     stage.append(landing.element)
   }
@@ -68,7 +68,7 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
     document.body.dataset.view = 'game'
     // The whole page takes on the game's colour while it is being played.
     document.body.style.setProperty('--game-hue', String(game.card.hue))
-    document.title = `${game.name} · Tiny Brain Games`
+    document.title = `${game.name} · Braino Games`
     running = game.mount(stage, {
       exit: () => navigate('/'),
       leaderboard,
@@ -103,6 +103,6 @@ export function createShell({ container, leaderboard }: ShellOptions): void {
   })
 
   console.info(
-    `Tiny Brain Games — ${GAMES.filter((g) => g.status === 'ready').length} playable`,
+    `Braino Games — ${GAMES.filter((g) => g.status === 'ready').length} playable`,
   )
 }

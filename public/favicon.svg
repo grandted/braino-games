@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
-  <!-- Tiny Brain Games: a small cluster of firing nodes. Abstract enough to
+  <!-- Braino Games: a small cluster of firing nodes. Abstract enough to
        front a platform rather than any one game, and still legible at 16px. -->
   <rect width="48" height="48" rx="11" fill="#0a0a0f" />
   <g stroke="#cba6f7" stroke-width="2" stroke-linecap="round" opacity="0.55">

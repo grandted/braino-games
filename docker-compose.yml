@@ -1,7 +1,7 @@
 services:
-  tinybrain:
+  braino:
     build: .
-    image: tinybrain-games
+    image: braino-games
     restart: unless-stopped
     ports:
       - "8787:8787"

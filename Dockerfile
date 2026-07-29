@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# Tiny Brain Games — production image.
+# Braino Games — production image.
 #
 # Two stages. The first has the dev dependencies (vite, tsc) and produces
 # dist/. The second has none: Node runs the server straight from TypeScript

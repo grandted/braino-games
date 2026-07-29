@@ -1,4 +1,4 @@
-/* Tiny Brain Games — the platform shell and the deck.
+/* Braino Games — the platform shell and the deck.
  *
  * Shares Tangent's palette, type scale and motion vocabulary, but speaks in a
  * different voice on purpose: Tangent's wordmark is lowercase and tight, the
@@ -75,9 +75,10 @@ body[data-view='deck'] .shell-back {
   flex-direction: column;
   align-items: center;
   line-height: 0.86;
-  /* Sized for the longest line, "TINY BRAIN": at ten tracked capitals the old
-     ceiling ran off the side of a phone. */
-  font-size: clamp(30px, 8.5vw, 88px);
+  /* Sized for the longest line, "BRAINO": six tracked capitals, where the
+     wordmark used to be ten, so the scale is set wider to fill the same
+     measure. The ceiling still has to clear a phone without running off it. */
+  font-size: clamp(34px, 14vw, 96px);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.16em;
