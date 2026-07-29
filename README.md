@@ -34,6 +34,25 @@ npm start           # builds, then serves the game and the API on 8787
 To play on a phone over your local network, run `npm run dev -- --host`
 and open the printed address.
 
+## Deploy
+
+```bash
+docker compose up -d --build
+```
+
+That is the whole thing: one container on port 8787, serving the game and
+the API. It builds the client inside the image, so the host needs nothing
+but Docker — no Node, no `npm install`.
+
+The board is bind-mounted from `./data`, which is where it already lives,
+so an existing database is picked up as-is and a rebuild leaves it alone.
+Back that directory up; nothing else in the container is worth keeping.
+
+Behind a reverse proxy, set `TANGENT_TRUST_PROXY: "1"` in
+`docker-compose.yml` — but only if the proxy actually rewrites
+`x-forwarded-for`, because otherwise a client can spoof the header and
+walk past the rate limit.
+
 ---
 
 ## Tangent
@@ -111,11 +130,13 @@ trying to be.
 
 ## Status
 
-**v0.3** — evolution levels, points, the 3D helix, a global board, and
-phone play. Release candidate for 1.0.
+**v1.0** — the platform, with Tangent on it: four modes, evolution
+levels, points, the 3D helix, a global board, phone play, and a one
+command deploy.
 
 Roadmap:
 - v1.1 — more modes still (WASD, mixed keyboard/mouse)
+- later — the two face-down cards
 
 ## Docs
 
@@ -128,3 +149,9 @@ Roadmap:
 
 Vite and TypeScript on the client, `node:http` and `node:sqlite` on the
 server. No framework, no runtime dependencies at either end.
+
+## License
+
+[GNU AGPL-3.0-or-later](LICENSE). Use it, change it, run it — but if you
+host a modified version where other people can play it, publish your
+source too.
