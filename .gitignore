@@ -15,6 +15,10 @@ dist-ssr
 # Leaderboard database (sqlite + wal/shm sidecars)
 data
 
+# Server-local deploy settings. .env.example is the tracked template; the
+# real file belongs to the host it runs on and must survive a deploy pull.
+.env
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

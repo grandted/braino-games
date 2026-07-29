@@ -2,9 +2,13 @@ services:
   braino:
     build: .
     image: braino-games
+    container_name: braino-games
     restart: unless-stopped
     ports:
-      - "8787:8787"
+      # Host binding is server-local — see .env.example. The default is
+      # loopback, so a host that never sets .env cannot expose itself by
+      # accident; a proxied deploy opens it to the LAN explicitly.
+      - "${BRAINO_BIND:-127.0.0.1}:${BRAINO_PORT:-8787}:8787"
     volumes:
       # The leaderboard, on the host. This is the only state the container
       # has, and the one thing a rebuild must not touch.
@@ -12,4 +16,9 @@ services:
     environment:
       # Set to "1" only when something in front actually rewrites
       # x-forwarded-for — otherwise a client can spoof it past the rate limit.
-      TANGENT_TRUST_PROXY: "0"
+      TANGENT_TRUST_PROXY: "${TANGENT_TRUST_PROXY:-0}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
