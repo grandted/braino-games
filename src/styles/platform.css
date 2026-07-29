@@ -635,3 +635,72 @@ body[data-view='deck'] .shell-back {
     animation: none;
   }
 }
+
+/* Install banner ---------------------------------------------------------
+ * Sits under the deck, never over a game. Quiet by design: it is an offer,
+ * not an interruption, and it is gone for good once dismissed.
+ */
+
+.install {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, 100%);
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-raised) 82%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--text-dim);
+  font-size: 14px;
+  text-align: left;
+}
+
+/* display:flex would otherwise win over the hidden attribute, and the banner
+   would show before the browser has said the app can be installed. */
+.install[hidden] {
+  display: none;
+}
+
+.install__text {
+  flex: 1 1 auto;
+}
+
+.install__go {
+  flex: none;
+  padding: 9px 18px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.install__dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  font: 600 20px/1 var(--sans);
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 140ms ease,
+    border-color 140ms ease;
+}
+
+.install__dismiss:hover,
+.install__dismiss:focus-visible {
+  color: var(--text);
+  border-color: var(--line);
+}
+
+@media (pointer: coarse) {
+  /* Same reachable target as everything else on a phone. */
+  .install__dismiss {
+    width: 44px;
+    height: 44px;
+  }
+}

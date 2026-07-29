@@ -130,6 +130,10 @@ summary,
   --app-pad-y: 24px;
   --app-pad-top: max(var(--app-pad-y), env(safe-area-inset-top));
   --app-pad-bottom: max(var(--app-pad-y), env(safe-area-inset-bottom));
+  /* Sideways insets matter in landscape, which is a supported way to play:
+     that is where the notch and the home indicator move to. */
+  --app-pad-left: max(var(--app-pad-x), env(safe-area-inset-left));
+  --app-pad-right: max(var(--app-pad-x), env(safe-area-inset-right));
   --app-pad-block: calc(var(--app-pad-top) + var(--app-pad-bottom));
 
   /* svh, not dvh: the small viewport is the one that's always visible, so the
@@ -137,7 +141,26 @@ summary,
   min-height: 100svh;
   display: grid;
   place-items: center;
-  padding: var(--app-pad-top) var(--app-pad-x) var(--app-pad-bottom);
+  padding: var(--app-pad-top) var(--app-pad-right) var(--app-pad-bottom)
+    var(--app-pad-left);
+}
+
+/* Installed, this is not a page. A long press that raises a selection or a
+   callout menu gives that away instantly, and mid-round it costs a round.
+   Only when installed: in a browser tab, selecting text is expected. The
+   nickname field is exempt — a name you cannot select is worse than either. */
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
 }
 
 /* The deck needs room to breathe at the top rather than being pinned to the

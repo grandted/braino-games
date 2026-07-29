@@ -34,6 +34,20 @@ npm start           # builds, then serves the game and the API on 8787
 To play on a phone over your local network, run `npm run dev -- --host`
 and open the printed address.
 
+### On a phone
+
+Braino installs to a home screen and plays offline once it has loaded
+once. Android and desktop Chrome offer an Install button on the deck;
+iOS has no such API, so there it is Share → Add to Home Screen.
+
+Installed, it launches full screen with its own icon and launch screen,
+and only the leaderboard needs a connection — the game itself, and your
+personal bests, are entirely on the device.
+
+The service worker is production-only, so `npm run dev` is never shadowed
+by a cache. Note that it needs a secure origin: over plain HTTP on a LAN
+address the app still plays, it just will not install or work offline.
+
 ## Deploy
 
 ```bash

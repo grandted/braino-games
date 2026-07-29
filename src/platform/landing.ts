@@ -7,6 +7,7 @@
  */
 
 import { readBest } from '../shared/leaderboard/index.ts'
+import { createInstallBanner } from './pwa.ts'
 import { GAMES } from './registry.ts'
 import type { GameDefinition } from './types.ts'
 
@@ -49,9 +50,15 @@ export function createLanding(onOpen: (game: GameDefinition) => void): Landing {
 
   element.append(header, deck, footer)
 
+  // Only ever on the deck: an install banner over a running game would be a
+  // dialog in the middle of a round.
+  const install = createInstallBanner()
+  if (install) element.append(install.element)
+
   return {
     element,
     destroy() {
+      install?.destroy()
       element.remove()
     },
   }

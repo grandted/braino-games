@@ -19,3 +19,8 @@ docs
 Dockerfile
 .dockerignore
 docker-compose.yml
+
+# Server-local deploy settings. Compose reads these on the host; baking a
+# particular host's bind address into the image would be a trap.
+.env
+.env.example

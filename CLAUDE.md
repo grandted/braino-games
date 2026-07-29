@@ -142,7 +142,8 @@ src/
 │   ├── types.ts               the contract every game implements
 │   ├── registry.ts            the game list — the one file a new game edits
 │   ├── shell.ts               routing (URL hash), mounting, back control
-│   └── landing.ts             the card deck
+│   ├── landing.ts             the card deck
+│   └── pwa.ts                 service worker registration + install banner
 ├── styles/
 │   ├── base.css               tokens shared by the platform and every game
 │   └── platform.css           masthead, deck, shell chrome
@@ -180,6 +181,19 @@ server/
 ├── db.ts                node:sqlite storage
 ├── validate.ts          plausibility checks on submitted runs
 └── rateLimit.ts         in-memory fixed-window limiter
+
+public/                  copied to dist/ verbatim, served from the root
+├── manifest.webmanifest the installable app: name, icons, shortcuts
+├── sw.js                offline shell — hand-written, hand-versioned
+├── favicon.svg          the mark, and the source of every raster below
+├── apple-touch-icon.png 180px, opaque — iOS ignores an SVG here
+├── icon-{192,512}.png   manifest icons
+├── icon-maskable-512.png full bleed, art inside the safe zone
+└── splash/              36 iOS launch screens, one per device × orientation
+
+scripts/
+└── icons.py             renders every PNG above from the mark. Not wired
+                         into the build; run it when favicon.svg changes.
 ```
 
 **`leaderboard/personal.ts` is not a leaderboard.** It is the arcade
@@ -202,6 +216,32 @@ checking both sides.
 `leaderboard/types.ts`, and both `RANK_ORDER` and `countBetter` in
 `server/db.ts`. They must agree exactly. There is a scratchpad test that
 compares them; run it after any change to the order.
+
+## The installed app
+
+It installs to a home screen and plays offline. Four things keep that true:
+
+1. **`/api/` is never cached, in either direction.** A board served from
+   disk is a lie, and a replayed submission is a duplicate. `sw.js` returns
+   without calling `respondWith` for those, so they go straight to the
+   network.
+2. **`sw.js` is hand-versioned.** Bump `VERSION` when you edit it —
+   `activate` deletes every cache whose name doesn't match, and that is the
+   only thing that ever clears one. Navigations are network-first so a
+   deploy lands on next launch; `/assets/` is content-hashed and so cached
+   forever.
+3. **The icons are generated, not drawn.** `public/favicon.svg` is the only
+   place the mark exists. Change it, mirror the numbers into
+   `scripts/icons.py`, re-run it, and paste its `splash-links.html` output
+   into `index.html`. Committed PNGs with no generator would be
+   unreproducible binaries.
+4. **A missing launch screen is a white flash.** Safari matches
+   `apple-touch-startup-image` on exact device metrics, so a device absent
+   from `DEVICES` in `scripts/icons.py` gets no splash at all. Add new
+   iPhones there as they ship.
+
+`index.html` carries 36 `<link>` tags for those launch screens. That is not
+clutter to tidy away — it is the only interface iOS offers.
 
 ## Invariants — do not break these
 

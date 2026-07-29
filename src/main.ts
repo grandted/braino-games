@@ -13,6 +13,7 @@ import './games/tangent/styles/helix.css'
 
 import { createShell } from './platform/shell.ts'
 import { createLeaderboard } from './shared/leaderboard/index.ts'
+import { registerServiceWorker } from './platform/pwa.ts'
 
 function mountPoint(): HTMLElement {
   const element = document.querySelector<HTMLDivElement>('#app')
@@ -24,3 +25,5 @@ createShell({
   container: mountPoint(),
   leaderboard: createLeaderboard(),
 })
+
+registerServiceWorker()

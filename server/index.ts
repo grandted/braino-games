@@ -49,7 +49,25 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.json': 'application/json; charset=utf-8',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.woff2': 'font/woff2',
+}
+
+/**
+ * How long the browser may keep a static file.
+ *
+ * Vite content-hashes everything under /assets/, so those URLs can never mean
+ * anything else and are safe to keep forever. Everything else is a stable
+ * name with changing contents, and must be revalidated or an installed app
+ * would never see a deploy: index.html points at the current hashed bundle,
+ * and sw.js decides what the app does offline.
+ */
+function cacheControl(pathname: string): string {
+  if (pathname.startsWith('/assets/')) return 'public, max-age=31536000, immutable'
+  if (pathname === '/sw.js') return 'no-cache'
+  if (pathname.endsWith('.html') || pathname === '/') return 'no-cache'
+  // Icons and launch screens: stable enough to keep, not immutable.
+  return 'public, max-age=86400'
 }
 
 const server = createServer((req, res) => {
@@ -179,13 +197,17 @@ async function serveStatic(pathname: string, res: ServerResponse): Promise<void>
     const file = await readFile(target)
     res.writeHead(200, {
       'content-type': CONTENT_TYPES[extname(target)] ?? 'application/octet-stream',
+      'cache-control': cacheControl(requested),
     })
     res.end(file)
   } catch {
     // Single-page app: unknown paths fall back to the shell, if it's built.
     try {
       const shell = await readFile(join(STATIC_ROOT, 'index.html'))
-      res.writeHead(200, { 'content-type': CONTENT_TYPES['.html'] })
+      res.writeHead(200, {
+        'content-type': CONTENT_TYPES['.html'],
+        'cache-control': 'no-cache',
+      })
       res.end(shell)
     } catch {
       sendJson(res, 404, {
