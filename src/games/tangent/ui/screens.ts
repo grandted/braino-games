@@ -402,6 +402,14 @@ export function createGameScreen({
   // slightly off a pad in clicks mode should still count.
   const board = createBoard({ mode, onInput, surface: element })
 
+  // The board's share of the screen: whatever the HUD, the strand and the
+  // controls leave behind. It is a size query container, which is how the
+  // board gets to size its pads from the height available as well as the
+  // width — see the note at the top of board.css.
+  const boardSlot = document.createElement('div')
+  boardSlot.className = 'board-slot'
+  boardSlot.append(board.element)
+
   const footer = createHint(
     '<kbd>esc</kbd> to quit · <kbd>m</kbd> for sound',
     'Tap the pads in order.',
@@ -423,7 +431,7 @@ export function createGameScreen({
     header,
     levelUp,
     helix.element,
-    board.element,
+    boardSlot,
     progress,
     controls,
     footer,

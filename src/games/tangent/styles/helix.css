@@ -18,7 +18,10 @@
   --helix-spin: 3.6s;
   /* Phase offset between neighbours — this is what makes it a helix. */
   --helix-stagger: -0.1s;
-  --helix-height: 86px;
+  /* Scaled to the viewport's height, not fixed: the strand is the most
+     compressible thing on the game screen, and on a short window it should
+     give its room to the pads rather than hold on to it. */
+  --helix-height: clamp(42px, 9svh, 86px);
   /* How far the whole strand swings while it orbits. */
   --helix-orbit: 15s;
 
@@ -40,6 +43,11 @@
     #000 93%,
     transparent
   );
+  /* The strand is turned in 3D, so it paints wider than the box it is 100% of
+     — about 11px each side on a phone, which is a page that scrolls sideways.
+     Clipped at the frame, which is where the mask above has already faded it
+     to nothing, so there is nothing to see lost. */
+  overflow: clip;
   opacity: 0.55;
   transition: opacity 260ms ease;
 }
@@ -314,13 +322,16 @@
 @media (pointer: coarse) {
   .helix {
     --helix-rungs: 24;
-    --helix-height: 62px;
+    --helix-height: clamp(34px, 7svh, 62px);
     /* Fewer rungs, so each must turn further to still trace a whole coil. */
     --helix-stagger: -0.16s;
     perspective: 320px;
-    /* min(), not 92vw alone: on a tablet that would stretch the strand across
-       the whole screen and lose the shape entirely. */
-    max-width: min(92vw, 620px);
+    /* 100%, not 92vw: a viewport percentage doesn't know about the frame
+       #app puts around it, so on a 320px phone 92vw was 2px wider than the
+       room the strand actually had — and 2px is a scrollbar. The 620px cap
+       stops a tablet stretching the strand until it loses its shape. */
+    max-width: min(100%, 620px);
+    height: calc(var(--helix-height) + 18px);
   }
 
   .helix__node {
@@ -337,11 +348,13 @@
   }
 }
 
-/* Landscape phones have no vertical room to spare. */
-@media (pointer: coarse) and (max-height: 460px) {
+/* Short and wide: the strand shares a column with the HUD rather than a row
+   with nothing, so it keeps its length and gives up its height. */
+@media (orientation: landscape) and (max-height: 560px) {
   .helix {
-    --helix-height: 40px;
+    --helix-height: clamp(26px, 9svh, 48px);
     --helix-rungs: 20;
+    height: calc(var(--helix-height) + 12px);
   }
 }
 

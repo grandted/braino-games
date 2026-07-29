@@ -44,7 +44,44 @@ so a game that cannot draw itself is still playable.
 **Layout keys off width; interaction keys off pointer.** A tablet is a
 wide screen you happen to touch — it wants the wide layout *and* the big
 targets. Anything sizing a layout from `(pointer: coarse)` alone will
-serve a stretched phone to a tablet.
+serve a stretched phone to a tablet. Where the thing running out is
+*height* — a landscape phone, a short laptop window — key off
+`max-height` and let a desktop in the same shape have the same answer.
+
+**A play area is sized by the room left over, never by the viewport.**
+Tangent's pads used to derive a width from `vw` and let an
+`aspect-ratio` decide the height, so a four-row keypad was routinely
+taller than the phone it had to fit in. Now `.board-slot` is a
+`container-type: size` box that takes the slack in the stack, and
+`board.css` solves one `--cell` from `100cqw`, `100cqh` and a ceiling. A
+variant declares only its shape — `--cols`, `--rows`, `--pad-ar`,
+`--gap`, `--cell-max` — and everything on a pad is a fraction of
+`--cell`, so type can never outgrow the box it sits in. Two traps come
+with it: a size container contributes *nothing* to intrinsic sizing, so
+it needs a definite area to fill (`flex: 1 1 0` in the flex column,
+`align-items: stretch` and a definite `height` in the landscape grid, or
+it collapses to zero); and it must never be centred in an area larger
+than itself before it has a size.
+
+**Overflow is mostly transforms.** The shake, the level-up shockwave,
+the strand's 3D tilt and swell, the pads' glow — every one paints
+outside its box and drags the page's scroll area with it. `.screen--game`
+and `.levelup` and `.helix` clip (`overflow: clip`, never `hidden`:
+`hidden` on one axis forces the other to `auto` and makes a scroll
+container). `body` clips sideways for the same reason.
+
+**`#app`'s grid column is `minmax(0, 1fr)`, not `auto`.** An auto column
+is sized to its content's max-content width, and every `width: 100%`
+inside then resolves against *that*. One unwrappable row — the tick strip
+at round 90 — silently made the column wider than the phone, and the
+whole layout followed it out.
+
+**An overflowing line does not widen its element.** A `white-space:
+nowrap` box whose text is too long paints straight out of itself and
+takes the page's scroll area with it, while every bounding box in the
+layout still measures clean — the leaderboard's reaction label did this
+for months. When hunting a horizontal scrollbar, compare `scrollWidth`
+with `clientWidth`, not rectangles.
 
 **Adding a game**: write a `GameDefinition`, put it in
 `platform/registry.ts`, add its rules to `server/games/<id>.ts` and its id

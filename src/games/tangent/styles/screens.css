@@ -5,6 +5,10 @@
    animation is repeated because a second `animation` declaration would
    otherwise replace it. */
 .screen--menu {
+  /* Seven items and six gaps: at the shared .screen gap this screen was
+     taller than a 1080p browser window, never mind a phone. Tighter here, so
+     the four mode cards stay above the fold. */
+  gap: clamp(14px, 2.2svh, 30px);
   animation:
     screen-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both,
     helix-palette 48s linear infinite;
@@ -32,6 +36,10 @@
 
 .mode-list {
   display: grid;
+  /* minmax(0, …) so a column may be narrower than the card's max-content
+     wants — two abreast in landscape, a card is about half what it would
+     choose, and a plain 1fr floors at min-content and runs off the side. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   width: min(440px, 100%);
 }
@@ -39,7 +47,8 @@
 .mode-card {
   font: inherit;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 2px 16px;
   text-align: left;
   padding: 18px 22px;
@@ -79,6 +88,12 @@
   font-size: 22px;
   font-weight: 800;
   letter-spacing: -0.02em;
+  /* The name is what gives when the card is narrower than its contents want.
+     Pi's ten-digit preview is nearly 160px on its own. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* What you'll be pressing, in the colours the game uses for it. */
@@ -87,6 +102,9 @@
   grid-row: 1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
   gap: 7px;
 }
 
@@ -171,16 +189,46 @@
 .screen--game {
   /* Distributes the stack down the screen rather than bunching it in the
      middle. The clamp keeps it tight where there is no room to give. */
-  gap: clamp(12px, 3.2vh, 44px);
-  padding-block: clamp(4px, 2vh, 28px);
+  gap: clamp(8px, 2.2svh, 32px);
+  padding-block: clamp(2px, 1.4svh, 24px);
   --level-hue: 285;
   position: relative;
+  /* The outer guarantee. Half the decoration on this screen is a transform —
+     the shake, the level-up shockwave, the strand's swell, the pads' glow —
+     and a transform paints outside its box and drags the page's scroll area
+     with it. Clipping (rather than hiding) means none of that can ever be
+     scrolled to, while the margin leaves the glows room to bloom. Safe only
+     because the board now sizes itself to the space that is left: nothing
+     that has to be reachable is ever outside this box. */
+  overflow: clip;
+  overflow-clip-margin: 16px;
 }
 
-/* On a tall screen the strand takes the slack, so the HUD stays up top and
-   the pads stay in reach instead of everything crowding the centre. */
+/* The slack, and the only thing in the stack that gives.
+ *
+ * Everything else on this screen is text or chrome and sizes itself from its
+ * content; the board is the one element that can be any size at all. So the
+ * board takes what is left after the rest have had their say, and sizes
+ * itself to it — see the note at the top of board.css. `container-type: size`
+ * is what lets the board read this box's height, and it is also why the slot
+ * must never take its own size from its contents: flex-basis 0, grow into the
+ * gap.
+ *
+ * The floor exists only so a pathologically short window leaves *something*
+ * to tap rather than a board of zero height. */
+.board-slot {
+  flex: 1 1 0;
+  min-height: 22svh;
+  width: 100%;
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+/* On a tall screen the strand takes some of the slack, so the HUD stays up
+   top and the pads stay in reach instead of everything crowding the centre. */
 .screen--game .helix {
-  margin-block: clamp(0px, 1.6vh, 26px);
+  margin-block: clamp(0px, 1.2svh, 20px);
 }
 
 /* Each organism tints the backdrop. It shifts on evolution, the way Tetris
@@ -237,7 +285,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: clamp(5px, 1.1vh, 12px);
+  gap: clamp(4px, 0.9svh, 12px);
+  /* Full width and an inline-size container, so the readout below can size
+     its type against the room the HUD actually has rather than against the
+     viewport — which in the landscape layout is a different number. Width
+     100% is required, not cosmetic: an inline-size container has no intrinsic
+     width to shrink-wrap to. */
+  width: 100%;
+  container-type: inline-size;
 }
 
 .hud__mode {
@@ -266,12 +321,20 @@
 /* Pi mode: what you have recited so far, written out. Tabular figures so the
    line doesn't shuffle sideways as digits land. */
 .readout {
-  font: 700 clamp(15px, 3.4vw, 20px) / 1 var(--mono);
+  /* 29 monospaced cells (READOUT_MAX plus the leading ellipsis) at roughly
+     0.72em of advance each need the type to stay under ~4.8% of the line's
+     width, or a nowrap line runs off the side of a small phone. Sized off the
+     HUD's own width — see the container declared there — so it fits the
+     portrait stack and the landscape column alike. The clip is the belt to
+     that braces: a font with wider figures loses a digit instead of the page
+     gaining a scrollbar. */
+  font: 700 clamp(10px, 4.6cqw, 20px) / 1 var(--mono);
   letter-spacing: 0.12em;
   color: hsl(var(--level-hue) 80% 72%);
   font-variant-numeric: tabular-nums;
   min-height: 1em;
-  max-width: 92vw;
+  max-width: 100%;
+  overflow: clip;
   white-space: nowrap;
   text-align: center;
   transition: color 900ms ease;
@@ -291,13 +354,21 @@
 .evolution {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  max-width: 100%;
 }
 
 .evolution__name {
   font: 700 12px/1 var(--mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  /* "Level 10 · AMPHIBIAN" alongside the genome bar is wider than a 320px
+     phone. The name gives way; the bar is a fixed width and keeps it. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   /* The whole HUD moves with the organism, not just the backdrop. */
   color: hsl(var(--level-hue) 75% 68%);
   transition: color 900ms ease;
@@ -305,6 +376,7 @@
 
 .evolution__genome {
   display: block;
+  flex: 0 0 auto;
   width: 110px;
   height: 6px;
   border-radius: 3px;
@@ -339,6 +411,11 @@
   position: absolute;
   inset: 0;
   z-index: 5;
+  /* The shockwave grows to nearly three times its own width. Unclipped that
+     is scrollable overflow, so for ~900ms every level-up handed the page a
+     scrollbar and let the layout jump. It was always meant to run off the
+     edges; now it does that by being clipped there. */
+  overflow: clip;
   display: grid;
   place-content: center;
   place-items: center;
@@ -705,17 +782,23 @@
   color: var(--sym-up);
 }
 
+/* One row, always. There is a tick per symbol in the sequence and the
+   sequence grows by one every round, so wrapping made this quietly taller and
+   taller — at round 40 it was four rows deep and eating the board's space.
+   Now the ticks share a fixed width and get thinner instead. */
 .progress {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
-  gap: 6px;
+  gap: 3px;
   min-height: 6px;
-  max-width: 320px;
+  width: min(320px, 100%);
+  overflow: clip;
 }
 
 .progress__tick {
-  width: 18px;
+  flex: 0 1 18px;
+  min-width: 2px;
   height: 6px;
   border-radius: 3px;
   background: var(--line-bright);
@@ -965,6 +1048,10 @@
 
 .tabs {
   display: flex;
+  /* Four mode tabs are wider than a 320px phone. They wrap rather than run
+     off the side. */
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -1074,7 +1161,20 @@
 .entry__reaction,
 .entry__when {
   font: 600 12px/1 var(--mono);
+  line-height: 1.4;
   color: var(--text-dim);
+  min-width: 0;
+}
+
+/* "L9 amphibian · 24 rounds · 412 ms" is ~240px of monospace. Held on one
+   line it painted straight out of a 280px phone and took the page's scroll
+   area with it — and an overflowing *inline* box doesn't widen its element,
+   so nothing in the layout says it happened. It wraps. */
+.entry__reaction {
+  overflow-wrap: anywhere;
+}
+
+.entry__when {
   white-space: nowrap;
 }
 
@@ -1116,21 +1216,89 @@
   }
 }
 
-/* On the narrowest phones the symbol preview drops under the mode name rather
-   than squeezing it. */
-@media (max-width: 360px) {
-  .mode-card {
-    grid-template-columns: auto 1fr;
+/* The narrowest phones. The symbol preview used to drop onto its own row
+   here, which read well and cost ~32px a card — 128px of a 452px screen, to
+   avoid squeezing something that squeezes perfectly well. Now it just gets
+   smaller and stays on the line with the name. */
+@media (max-width: 400px) {
+  .mode-card__glyph {
+    font-size: 11px;
   }
 
   .mode-card__glyphs {
-    grid-column: 2;
-    grid-row: 2;
-    margin-block: 2px;
+    gap: 3px;
+    /* Pi shows ten of them; without a ceiling they would take the name's
+       room rather than their own. */
+    max-width: 46%;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Two buttons and 250-odd pixels: at the usual padding they wrap to two
+     rows and cost 50px of height for nothing. */
+  .btn {
+    padding: 12px 16px;
+  }
+}
+
+/* The compact HUD ---------------------------------------------------------
+ * The stacked column is seven lines tall — around 150px, which on a phone is
+ * most of the difference between a comfortable board and a scrollbar. Same
+ * information, laid out across instead of down: the round and the lives flank
+ * the points, and the rest stacks under them.
+ *
+ * Keyed on *either* a touch pointer or a short viewport, because both are the
+ * same problem: a screen with no vertical room to spend on decoration. A
+ * 1366x768 laptop overflowed on Pi mode for exactly this reason.
+ */
+@media (pointer: coarse), (max-height: 760px) {
+  .hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    grid-template-areas:
+      'round   points  lives'
+      'evo     evo     evo'
+      'readout readout readout'
+      'next    next    next'
+      'status  status  status';
+    align-items: center;
+    justify-items: center;
+    gap: 3px 10px;
   }
 
-  .mode-card__tagline {
-    grid-row: 3;
+  /* You picked the mode two taps ago and the pads say which it is. */
+  .hud__mode {
+    display: none;
+  }
+
+  .hud__round {
+    grid-area: round;
+    justify-self: end;
+  }
+
+  .hud__points {
+    grid-area: points;
+  }
+
+  .lives {
+    grid-area: lives;
+    justify-self: start;
+  }
+
+  .evolution {
+    grid-area: evo;
+  }
+
+  .readout {
+    grid-area: readout;
+  }
+
+  .next-up {
+    grid-area: next;
+  }
+
+  .hud__status {
+    grid-area: status;
   }
 }
 
@@ -1153,32 +1321,27 @@
 
   .screen--game {
     justify-content: flex-start;
-    gap: clamp(10px, 1.8vh, 20px);
+    gap: clamp(8px, 1.6svh, 18px);
     padding-block: 0;
     /* min-height comes from the rule above, which tracks the frame itself. */
   }
 
-  .screen--game .board {
-    /* Sink the pads to the bottom of the screen. */
-    margin-top: auto;
+  /* Sink the pads to the bottom of the slack, where the thumbs are. */
+  .board-slot {
+    align-items: end;
   }
 
-  /* The strand sits between the HUD and the pads on a phone too. */
   .screen--game .helix {
-    margin-block: auto;
-  }
-
-  .screen--game .progress {
-    max-width: 70vw;
+    margin-block: 0;
   }
 
   .screen--game .progress__tick {
-    width: 12px;
+    flex-basis: 12px;
     height: 4px;
   }
 
   .screen--game .hud__points {
-    font-size: clamp(28px, 8vw, 40px);
+    font-size: clamp(26px, 7.5vw, 40px);
   }
 
   .screen--game .controls {
@@ -1197,16 +1360,8 @@
     min-height: 46px;
   }
 
-  .mode-card {
-    padding: 16px 18px;
-  }
-
   .mode-card__glyph {
     font-size: 15px;
-  }
-
-  .wordmark {
-    font-size: clamp(44px, 16vw, 72px);
   }
 
   .entry {
@@ -1214,24 +1369,152 @@
   }
 }
 
-/* Landscape phones: almost no vertical room, so lose the decoration. */
-@media (pointer: coarse) and (max-height: 460px) {
-  .screen--game .hud__mode,
+/* Compact menu ------------------------------------------------------------
+ * Four mode cards are the point of this screen; everything around them is
+ * introduction. As the viewport shortens the introduction gives way in order
+ * of how much it is worth — blurb and hint, then the taglines, then the
+ * strand — so the cards themselves stay whole rather than being pushed under
+ * the fold. Keyed on height, because that is the thing running out.
+ */
+@media (pointer: coarse), (max-height: 860px) {
+  .screen--menu {
+    gap: clamp(10px, 2svh, 26px);
+  }
+
+  .screen--menu .wordmark {
+    font-size: clamp(36px, 12vw, 64px);
+  }
+
+  .mode-list {
+    gap: 10px;
+  }
+
+  .mode-card {
+    padding: 12px 16px;
+  }
+
+  .mode-card__name {
+    font-size: 19px;
+  }
+}
+
+/* The blurb and the hint go first: a player who has to scroll past the fourth
+   mode to reach them will not read them anyway. */
+@media (max-height: 820px) {
+  .screen--menu .subtitle,
+  .screen--menu > .hint {
+    display: none;
+  }
+}
+
+/* Then the taglines. On a phone each one wraps to two lines, which is 40px a
+   card — the single biggest thing on the screen after the cards themselves.
+   The name and the symbol preview still say what the mode is. */
+@media (max-height: 700px) {
+  .mode-card__tagline {
+    display: none;
+  }
+}
+
+/* And on the shortest screens the strand goes too. It is the game's signature
+   object and the last decoration to give, but four mode cards beat a flourish
+   you have to scroll past. */
+@media (max-height: 560px) {
+  .screen--menu .helix--menu {
+    display: none;
+  }
+}
+
+/* Landscape has width instead of height, so the modes go two abreast. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen--menu .wordmark {
+    font-size: clamp(28px, 7svh, 48px);
+  }
+
+  .mode-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(640px, 100%);
+  }
+}
+
+/* Shortest of all — a landscape phone is about 250px of usable height. The
+   rules line and the personal bests are the last text to go; the four cards
+   and a way out are what has to be on screen. */
+@media (max-height: 400px) {
+  .screen--menu .menu-rules,
+  .screen--menu .menu-best {
+    display: none;
+  }
+}
+
+/* Short and wide --------------------------------------------------------
+ * A landscape phone has width to burn and almost no height, and stacking the
+ * HUD above the pads spends the one thing it hasn't got. So the stack turns
+ * ninety degrees: chrome down the left, board down the right, each with a
+ * full column of height to itself. Pi mode goes from ~15px pads to ~70px.
+ *
+ * Keyed on the shape of the viewport rather than on the pointer — a short
+ * desktop window is the same shape and wants the same answer.
+ */
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen--game {
+    display: grid;
+    /* A definite height, not just a minimum: `1fr` sizes against the free
+       space in a *definite* container, and against its own content in an
+       indefinite one. With min-height alone the board's row resolved to the
+       height of a size-contained box — which is zero — and the pads came out
+       6px square. */
+    height: calc(100svh - var(--app-pad-block));
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas:
+      'hud      board'
+      'progress board'
+      'helix    board'
+      'controls board';
+    align-content: stretch;
+    /* stretch, not the `center` .screen sets for its flex column: centred, a
+       size-contained slot has no content to be centred *around* and collapses
+       to nothing. It has to fill its area to have one. */
+    align-items: stretch;
+    justify-items: center;
+    column-gap: 18px;
+    row-gap: 6px;
+    padding-block: 0;
+  }
+
+  .screen--game > .hud {
+    grid-area: hud;
+  }
+
+  .screen--game > .progress {
+    grid-area: progress;
+  }
+
+  .screen--game > .helix {
+    grid-area: helix;
+    align-self: center;
+    margin-block: 0;
+  }
+
+  .screen--game > .controls {
+    grid-area: controls;
+  }
+
+  .screen--game > .board-slot {
+    grid-area: board;
+    /* The column is the floor now; the portrait one would over-constrain it. */
+    min-height: 0;
+    align-items: center;
+  }
+
+  /* Nothing left to spend on a line that says "tap the pads". */
   .screen--game > .hint {
     display: none;
   }
 
   .screen--game .hud__points {
-    font-size: 24px;
-  }
-
-  .board--split .pad {
-    aspect-ratio: 16 / 9;
-    max-height: 34svh;
-  }
-
-  .board--cluster .pad {
-    aspect-ratio: 2 / 1;
+    font-size: clamp(22px, 4.4svh, 34px);
   }
 }
 
