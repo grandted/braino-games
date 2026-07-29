@@ -324,6 +324,25 @@ export function createGameScreen({
   const element = document.createElement('section')
   element.className = 'screen screen--game'
 
+  // The organism's wash over the whole viewport. A sibling of the screen, not
+  // a pseudo-element of it, and that is the whole point: the screen is
+  // transformed (the entry animation, the miss shake), clipped (`overflow:
+  // clip`) and at most 720px wide, and a `position: fixed` child of a
+  // transformed element is positioned and clipped by *that element* rather
+  // than by the viewport. As the screen's own ::before, the wash was inset by
+  // the frame's padding — a black border — and vanished outright the moment
+  // the shake animation replaced the entry animation and the screen stopped
+  // being a containing block. Out here nothing can capture it.
+  const backdrop = document.createElement('div')
+  backdrop.className = 'backdrop'
+
+  // `display: contents`, so the screen is still a grid item of #app and every
+  // size it derives from the frame is unchanged. It exists only to hold the
+  // wash next to the screen and to carry --level-hue down to both.
+  const root = document.createElement('div')
+  root.className = 'game-root'
+  root.append(backdrop, element)
+
   const header = document.createElement('header')
   header.className = 'hud'
 
@@ -450,7 +469,9 @@ export function createGameScreen({
   window.addEventListener('keydown', onKeyDown)
 
   return {
-    element,
+    // The shell mounts the wrapper, so the wash goes up and comes down with
+    // the screen. Everything else here still addresses `element`.
+    element: root,
     board,
     helix,
 
@@ -475,8 +496,10 @@ export function createGameScreen({
         `${bonded} of ${genome} base pairs bonded`,
       )
       helix.setGenome(bonded, genome, hue)
-      // Tints the screen's backdrop to match the organism.
-      element.style.setProperty('--level-hue', String(hue))
+      // Tints the screen's backdrop to match the organism. Set on the wrapper
+      // rather than the screen: the wash is a sibling and would not inherit it
+      // from the screen.
+      root.style.setProperty('--level-hue', String(hue))
       element.dataset.level = String(value)
     },
 
@@ -516,7 +539,7 @@ export function createGameScreen({
       levelUpName.textContent = next.name
       // Start the backdrop moving now rather than waiting for the next round,
       // so the colour change and the burst are one moment instead of two.
-      element.style.setProperty('--level-hue', String(next.hue))
+      root.style.setProperty('--level-hue', String(next.hue))
       helix.evolve()
       element.classList.remove('is-evolving')
       void element.offsetWidth
@@ -565,7 +588,8 @@ export function createGameScreen({
       mute.destroy()
       helix.destroy()
       board.destroy()
-      element.remove()
+      // The wrapper, so the wash leaves with the screen it belongs to.
+      root.remove()
     },
   }
 }

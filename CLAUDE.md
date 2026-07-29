@@ -70,6 +70,23 @@ and `.levelup` and `.helix` clip (`overflow: clip`, never `hidden`:
 `hidden` on one axis forces the other to `auto` and makes a scroll
 container). `body` clips sideways for the same reason.
 
+**A viewport-wide decoration cannot live inside the screen it decorates.**
+`position: fixed` means "relative to the viewport" only until an ancestor
+is transformed, filtered or contained — then that ancestor becomes the
+containing block *and* clips the thing with its own `overflow`. Every one
+of those is true of `.screen--game`: `.screen`'s entry animation fills
+forwards, the miss shake replaces it, it clips, and it is at most 720px
+wide. So the organism's wash, written as `.screen--game::before`, came out
+inset by exactly the frame's padding — and went out altogether the moment
+the shake animation ended and left the screen neither a containing block
+nor a stacking context, dropping a `z-index: -1` layer behind `body`'s
+opaque background. It is now `.backdrop`, a sibling of the screen under a
+`display: contents` wrapper that carries `--level-hue` to both. Two rules
+fell out of it: **a negative z-index only stays visible while some
+ancestor happens to be a stacking context** — prefer a positioned layer at
+0 with the content above it — and **`animation` is one property**, so a
+class that animates an element replaces whatever animation it already had.
+
 **`#app`'s grid column is `minmax(0, 1fr)`, not `auto`.** An auto column
 is sized to its content's max-content width, and every `width: 100%`
 inside then resolves against *that*. One unwrappable row — the tick strip

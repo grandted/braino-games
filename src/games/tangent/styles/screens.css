@@ -191,8 +191,12 @@
      middle. The clamp keeps it tight where there is no room to give. */
   gap: clamp(8px, 2.2svh, 32px);
   padding-block: clamp(2px, 1.4svh, 24px);
-  --level-hue: 285;
+  /* --level-hue is set on .game-root, so the wash and the screen read the same
+     one. Declaring it here too would shadow it for everything inside. */
   position: relative;
+  /* Above the wash, which sits at 0. Nothing on this screen has ever needed to
+     paint below it. */
+  z-index: 1;
   /* So the board slot can work its own ceiling out from the line width — see
      the note there. Inline-size only: the screen's height is the thing being
      divided up, and containing it would be circular. */
@@ -264,13 +268,36 @@
   margin-block: clamp(0px, 1.2svh, 20px);
 }
 
+/* The screen and its wash, side by side. `display: contents` so this box is
+   not in the layout at all: .screen--game is still a grid item of #app and
+   every size it derives from the frame is unchanged. */
+.game-root {
+  display: contents;
+  --level-hue: 285;
+}
+
 /* Each organism tints the backdrop. It shifts on evolution, the way Tetris
-   changes colour every tenth line. */
-.screen--game::before {
-  content: '';
+   changes colour every tenth line.
+ *
+ * A sibling of the screen rather than its ::before, and deliberately so. The
+ * screen is transformed (`screen-in` fills forwards, the miss shake replaces
+ * it), clipped (`overflow: clip`) and at most 720px wide — and a transformed
+ * element is the containing block for its own `position: fixed` descendants,
+ * which then get clipped by its overflow too. So as .screen--game::before this
+ * wash was inset by exactly the frame's padding (a black border), and the
+ * moment .is-shaking's animation ended it stopped filling, the screen stopped
+ * being a containing block *and* a stacking context, and a z-index:-1 layer
+ * dropped behind body's opaque background — the wash simply went out. Out here
+ * it answers to the viewport and nothing else.
+ *
+ * z-index 0, not -1: a negative layer only stays above the page's background
+ * while some ancestor happens to be a stacking context, which is exactly the
+ * accident that broke this. A positioned layer at 0 is unconditionally above
+ * body's background, and .screen--game's z-index: 1 keeps the game above it. */
+.backdrop {
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
   /* Two soft washes rather than one blob: enough for the eye to register a
      new organism, far too faint to compete with the pads. */
@@ -289,8 +316,10 @@
   transition: background 1100ms ease;
 }
 
-/* Evolution: the wash blooms once, then settles back to barely-there. */
-.screen--game.is-evolving::before {
+/* Evolution: the wash blooms once, then settles back to barely-there.
+   The state classes live on the screen, and the wash is its *previous*
+   sibling, so these read through the wrapper rather than with a combinator. */
+.game-root:has(.screen--game.is-evolving) .backdrop {
   animation: level-bloom 950ms ease-out;
 }
 
@@ -306,7 +335,7 @@
   }
 }
 
-.screen--game.is-anomaly::before {
+.game-root:has(.screen--game.is-anomaly) .backdrop {
   background: radial-gradient(
     ellipse 90% 55% at 50% 42%,
     hsl(0 0% 60% / 0.16),
@@ -757,7 +786,7 @@
   .screen--game.is-anomaly,
   .screen--game.is-anomaly .hud__points,
   .screen--game.is-celebrating .lives,
-  .screen--game.is-evolving::before,
+  .game-root:has(.screen--game.is-evolving) .backdrop,
   .over__record.is-new {
     animation: none;
   }
