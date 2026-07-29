@@ -7,10 +7,14 @@
          to a screenshot of the page, which looks like nothing at all. -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <!-- viewport-fit=cover so safe-area insets work on notched phones -->
+    <!-- viewport-fit=cover so safe-area insets work on notched phones.
+         maximum-scale/user-scalable: this is a game laid out to fill the
+         screen exactly, and a pinch mid-round costs a round. Android honours
+         these; iOS has ignored them since iOS 10, so Safari is handled in
+         platform/zoom.ts instead — see the note there. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no"
     />
     <meta name="color-scheme" content="dark" />
     <meta name="theme-color" content="#0a0a0f" />

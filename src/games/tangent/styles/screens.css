@@ -193,6 +193,10 @@
   padding-block: clamp(2px, 1.4svh, 24px);
   --level-hue: 285;
   position: relative;
+  /* So the board slot can work its own ceiling out from the line width — see
+     the note there. Inline-size only: the screen's height is the thing being
+     divided up, and containing it would be circular. */
+  container-type: inline-size;
   /* The outer guarantee. Half the decoration on this screen is a transform —
      the shake, the level-up shockwave, the strand's swell, the pads' glow —
      and a transform paints outside its box and drags the page's scroll area
@@ -202,6 +206,14 @@
      that has to be reachable is ever outside this box. */
   overflow: clip;
   overflow-clip-margin: 16px;
+  /* The whole screen is the play area — in clicks mode a press anywhere in
+     here is an input — so no touch on it is ever a browser gesture. `none`
+     rather than `manipulation`: it takes the double-tap zoom *and* the pinch,
+     and there is nothing to scroll because the screen is sized to fit.
+     Stated here rather than inherited, because Safari honours touch-action on
+     the element a touch actually lands on far more reliably than on an
+     ancestor it would have to intersect with. */
+  touch-action: none;
 }
 
 /* The slack, and the only thing in the stack that gives.
@@ -219,10 +231,31 @@
 .board-slot {
   flex: 1 1 0;
   min-height: 22svh;
+  /* Greedy, but only up to the height the board will actually use. Past that
+     the extra is not the board's — it is a hole above the pads, and on a tall
+     phone in arrows mode it was 250px of one. Capped here it stays real free
+     space, which the strand's auto margins then centre themselves in.
+
+     The cap is solved from the *width*, which is the one input that does not
+     depend on this box's own height: a cell is at most the ceiling or a third
+     of the line, whichever is smaller, and the board is that many rows of it.
+     `100cqw` is the game screen, which declares itself an inline-size
+     container for exactly this. Anything height-derived here would be
+     circular. */
+  --cell-by-width: min(
+    var(--cell-max),
+    (100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols)
+  );
+  max-height: calc(
+    var(--rows) * var(--cell-by-width) / var(--pad-ar) + (var(--rows) - 1) *
+      var(--gap)
+  );
   width: 100%;
   container-type: size;
   display: grid;
   place-items: center;
+  /* The gaps between the pads are still the play area — see .screen--game. */
+  touch-action: none;
 }
 
 /* On a tall screen the strand takes some of the slack, so the HUD stays up
@@ -1237,7 +1270,7 @@
   /* Two buttons and 250-odd pixels: at the usual padding they wrap to two
      rows and cost 50px of height for nothing. */
   .btn {
-    padding: 12px 16px;
+    padding: 11px 12px;
   }
 }
 
@@ -1309,10 +1342,13 @@
 
 @media (pointer: coarse) {
   #app {
-    /* Tighter frame on a phone. Only the inputs change — the padding itself
-       and the screens' height both derive from these. */
-    --app-pad-x: 14px;
-    --app-pad-y: 14px;
+    /* Tighter frame on a phone: enough that a pad is not flush against the
+       bezel, and no more. Only the inputs change — the padding itself and the
+       screens' height both derive from these. The insets a notched phone adds
+       on top are not ours to shrink; that band belongs to the status bar and
+       the home indicator. */
+    --app-pad-x: 10px;
+    --app-pad-y: 10px;
   }
 
   .screen {
@@ -1331,8 +1367,15 @@
     align-items: end;
   }
 
+  /* The strand takes whatever the board could not use, and sits in the middle
+     of it — so the space between the HUD and the pads reads as the strand
+     having room rather than as a gap. Roomier here than anywhere else for the
+     same reason: in arrows mode that leftover is 200px of screen, and a 62px
+     strand adrift in it read as a hole. The menu's strand keeps its own size;
+     it is not standing in for anything. */
   .screen--game .helix {
-    margin-block: 0;
+    --helix-height: clamp(34px, 11svh, 104px);
+    margin-block: auto;
   }
 
   .screen--game .progress__tick {
@@ -1410,7 +1453,7 @@
 /* Then the taglines. On a phone each one wraps to two lines, which is 40px a
    card — the single biggest thing on the screen after the cards themselves.
    The name and the symbol preview still say what the mode is. */
-@media (max-height: 700px) {
+@media (max-height: 780px) {
   .mode-card__tagline {
     display: none;
   }
@@ -1437,12 +1480,20 @@
   }
 }
 
-/* Shortest of all — a landscape phone is about 250px of usable height. The
-   rules line and the personal bests are the last text to go; the four cards
-   and a way out are what has to be on screen. */
-@media (max-height: 400px) {
+/* The rules line and the personal bests are the last text to go; the four
+   cards and a way out are what has to be on screen. */
+@media (max-height: 500px) {
   .screen--menu .menu-rules,
   .screen--menu .menu-best {
+    display: none;
+  }
+}
+
+/* Shortest of all — a landscape phone is about 220px of usable height, and
+   the wordmark is 35px of it. The back control says where you are and the
+   cards say what they do. */
+@media (max-height: 300px) {
+  .screen--menu .wordmark {
     display: none;
   }
 }
@@ -1505,6 +1556,12 @@
     grid-area: board;
     /* The column is the floor now; the portrait one would over-constrain it. */
     min-height: 0;
+    /* No ceiling here, and no self-alignment: the board wants the whole
+       column, and there is no strand below it waiting for the leftover. A
+       size-contained box that is centred rather than stretched has no content
+       to be centred around and collapses to nothing — that is the 6px-pad
+       bug, and it comes back the moment either of these is relaxed. */
+    max-height: none;
     align-items: center;
   }
 

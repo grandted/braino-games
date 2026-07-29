@@ -406,8 +406,11 @@ export function createGameScreen({
   // controls leave behind. It is a size query container, which is how the
   // board gets to size its pads from the height available as well as the
   // width — see the note at the top of board.css.
+  // The layout's name goes on the slot, not just the board: the slot declares
+  // the shape (rows, columns, ceilings) that both of them reason from, and
+  // custom properties inherit down to the board from here.
   const boardSlot = document.createElement('div')
-  boardSlot.className = 'board-slot'
+  boardSlot.className = `board-slot board-slot--${mode.layout}`
   boardSlot.append(board.element)
 
   const footer = createHint(

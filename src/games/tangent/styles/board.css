@@ -10,8 +10,11 @@
  * `.board-slot` (screens.css) is the leftover space, and it is a size query
  * container, so `100cqw`/`100cqh` here *are* that leftover. One cell size is
  * solved from three constraints — a ceiling, the width, the height — and the
- * grid tracks are laid out from it. Every variant then only has to declare
- * its shape:
+ * grid tracks are laid out from it.
+ *
+ * The shape is declared on the *slot*, and inherits down: the slot needs the
+ * same four numbers to know how tall the board could ever get, so it can stop
+ * growing there rather than leaving a hole above the pads.
  *
  *   --cols / --rows  the track counts, empty cells included
  *   --pad-ar         a pad's width ÷ its height
@@ -22,11 +25,6 @@
  * which is a sane answer rather than a broken one.
  */
 .board {
-  --cols: 3;
-  --rows: 2;
-  --pad-ar: 1;
-  --gap: 14px;
-  --cell-max: 116px;
   --cell: min(
     var(--cell-max),
     (100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols),
@@ -39,16 +37,31 @@
   grid-template-rows: repeat(var(--rows), calc(var(--cell) / var(--pad-ar)));
   user-select: none;
   -webkit-user-select: none;
+  /* No touch anywhere on or between the pads is a browser gesture. */
+  touch-action: none;
   transition: opacity 160ms ease;
+}
+
+/* The shapes. On the slot, because the slot has to know them too — see the
+   note above and `.board-slot` in screens.css. */
+.board-slot {
+  --cols: 3;
+  --rows: 2;
+  --pad-ar: 1;
+  --gap: 14px;
+  --cell-max: 116px;
 }
 
 /* Two rows, three columns, two of the six cells empty — the count is what the
    height is solved from, so the gaps in the T are part of the shape. */
-.board--cluster {
+.board-slot--cluster {
   --cols: 3;
   --rows: 2;
   --gap: 14px;
   --cell-max: 116px;
+}
+
+.board--cluster {
   grid-template-areas:
     '.    up    .    '
     'left down  right';
@@ -67,7 +80,7 @@
   grid-area: right;
 }
 
-.board--split {
+.board-slot--split {
   --cols: 2;
   --rows: 1;
   --pad-ar: 1.3333;
@@ -77,7 +90,7 @@
 
 /* Nine cells. Source order fills the 3x3, so unlike the cluster this needs no
    named areas. */
-.board--grid {
+.board-slot--grid {
   --cols: 3;
   --rows: 3;
   --gap: 12px;
@@ -95,11 +108,14 @@
 
 /* A phone keypad: 1-9 in a block with 0 under the middle. Source order is
    0..9, so each pad is placed explicitly. */
-.board--keypad {
+.board-slot--keypad {
   --cols: 3;
   --rows: 4;
   --gap: 10px;
   --cell-max: 88px;
+}
+
+.board--keypad {
   grid-template-areas:
     'd1 d2 d3'
     'd4 d5 d6'
@@ -304,30 +320,41 @@
    the ceilings change — how big a pad may get, and its proportions. What it
    actually gets is still whatever the slot can spare. */
 @media (pointer: coarse) {
-  .board--cluster {
+  .board-slot--cluster {
     --gap: 12px;
     /* Bounded so it stays a reachable cluster on a tablet rather than
        stretching into three separate targets. */
     --cell-max: 128px;
-    /* Slightly wider than tall — thumbs are more accurate horizontally. */
-    --pad-ar: 1.25;
+    /* Taller than wide. Three columns is all the width a phone has, so the
+       proportions are the only way the cluster gets to use the height it is
+       given — at 1.25 it sat as a shallow band across the bottom third with
+       200px of nothing above it. Bigger targets, and the inverted-T still
+       reads as one. */
+    --pad-ar: 0.9;
   }
 
-  .board--split {
+  .board-slot--split {
     --gap: 14px;
     --cell-max: 273px;
     /* Tall targets: in clicks mode these two are the whole game. */
     --pad-ar: 0.75;
   }
 
-  .board--grid {
+  .board-slot--grid {
     --gap: 9px;
     --cell-max: 134px;
   }
 
-  .board--keypad {
+  .board-slot--keypad {
     --gap: 8px;
-    --cell-max: 108px;
+    /* High enough that the *width* is what limits this board on a phone, not
+       the ceiling. At 108 the keypad stopped ~25px short of the frame on each
+       side and read as a border round the game. The tablet block below puts a
+       real ceiling back where there is genuinely too much room. */
+    --cell-max: 140px;
+    /* Four rows of squares cannot fill a 9:19.5 screen both ways, so the keys
+       are a little wider than tall and the width gets used. */
+    --pad-ar: 1.12;
   }
 }
 
@@ -335,21 +362,22 @@
    inherits the phone caps and plays like a blown-up phone — the pads keyed
    off pointer type, which says nothing about how much screen there is. */
 @media (pointer: coarse) and (min-width: 700px) {
-  .board--cluster {
+  .board-slot--cluster {
     --cell-max: 148px;
   }
 
-  .board--split {
+  .board-slot--split {
     --cell-max: 313px;
     --pad-ar: 1;
   }
 
-  .board--grid {
+  .board-slot--grid {
     --cell-max: 160px;
   }
 
-  .board--keypad {
+  .board-slot--keypad {
     --cell-max: 128px;
+    --pad-ar: 1;
   }
 }
 
