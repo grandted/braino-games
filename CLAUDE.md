@@ -103,7 +103,12 @@ Vite proxies `/api` to the Node server, so the browser only ever talks to
 one origin and there is no CORS anywhere.
 
 Production is a single process: `npm run start` builds the client and
-serves it alongside the API from port 8787.
+serves it alongside the API from port 8787. `docker compose up -d --build`
+is the same process in a container — the image builds `dist/` in a first
+stage and the runtime stage carries no `node_modules` at all, since Node
+strips the types itself and `node:sqlite` is inside the binary. It ships
+`src/` as well as `server/`, because the server imports the game rules
+from there. The database is bind-mounted from `./data`, unchanged.
 
 Dev server runs inside WSL2; reach it from Windows at
 `http://localhost:5173`. If localhost forwarding misbehaves, use

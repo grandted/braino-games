@@ -1,0 +1,15 @@
+services:
+  tinybrain:
+    build: .
+    image: tinybrain-games
+    restart: unless-stopped
+    ports:
+      - "8787:8787"
+    volumes:
+      # The leaderboard, on the host. This is the only state the container
+      # has, and the one thing a rebuild must not touch.
+      - ./data:/app/data
+    environment:
+      # Set to "1" only when something in front actually rewrites
+      # x-forwarded-for — otherwise a client can spoof it past the rate limit.
+      TANGENT_TRUST_PROXY: "0"

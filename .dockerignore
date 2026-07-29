@@ -1,0 +1,21 @@
+# Everything the image builds for itself, plus everything it must never carry.
+node_modules
+dist
+dist-ssr
+
+# The leaderboard database. Never bake real scores into an image — it is
+# mounted at runtime instead.
+data
+
+.git
+.gitignore
+.claude
+.vscode
+.idea
+docs
+*.log
+*.local
+.DS_Store
+Dockerfile
+.dockerignore
+docker-compose.yml
