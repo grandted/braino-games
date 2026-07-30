@@ -220,7 +220,9 @@ src/
 │   ├── board.ts         renders the pad, flash animation, all input
 │   ├── helix.ts         the 3D DNA strand (genome progress)
 │   ├── keys.ts          guards every global key handler shares
-│   └── audio.ts         synthesis, mix chain, reverb, ambient bed
+│   └── audio.ts         synthesis, mix chain, reverb, ambient bed, and
+│                        the score — a scheduled chord progression that
+│                        plays across every screen
 ├── leaderboard/
 │   ├── types.ts         Provider interface, Entry, windows, shared rules
 │   ├── remote.ts        HTTP provider against /api (v0.2)
@@ -314,22 +316,35 @@ clutter to tidy away — it is the only interface iOS offers.
    touch alone.** Including menu navigation and retry.
 7. **Audio is generated, never sampled.** No asset pipeline exists and
    none should. The reverb impulse is synthesised at startup; symbol
-   pitches never transpose, because they are the memory anchor — the
-   ambient bed is the thing that has to agree with them.
+   pitches never transpose, because they are the memory anchor — the bed
+   and the score are the things that have to agree with them.
 8. **Nothing competes with the playback timers.** The helix and every cue
    animate `transform`/`opacity` only, on the compositor. No
    `requestAnimationFrame`, no animating layout properties — a dropped
-   frame during playback is a round the player loses unfairly.
-9. **An unbonded helix rung never shows a symbol colour.** The strand sits
+   frame during playback is a round the player loses unfairly. The score's
+   scheduler is the one timer that runs alongside a round: it fires twice
+   a bar, builds a handful of nodes, and every boundary the ear hears is
+   on the audio thread, so a late tick cannot move a note. Keep it that
+   way — anything per-frame in `audio.ts` is a bug.
+9. **The score is behind the pattern, always.** It shares a key with the
+   symbols and, in grid mode, cannot avoid sharing exact pitches with
+   them, so what keeps the two apart is measured and deliberate: every
+   music note swells over a third of a second with no transient where a
+   symbol tone is a six-millisecond pluck, it sits ~12 dB under the
+   flashes, and it drops to almost nothing while the sequence plays. It is
+   also slow (~52 BPM) and full of rests, because something to keep time
+   by is something the player fights. Raising its level, sharpening its
+   envelope or tightening its rhythm all break the same rule.
+10. **An unbonded helix rung never shows a symbol colour.** The strand sits
    directly above the pads; colouring an unsolved rung would put the
    answer on screen. Colour arrives only on bonding.
-10. **A global shortcut must never fire while the player is typing.**
+11. **A global shortcut must never fire while the player is typing.**
     Key handling lives on `window` so a pad responds without clicking
     first — which also puts every shortcut one keystroke away from the
     nickname field. Every `window` keydown handler calls
     `isGameKeystroke()` from `ui/keys.ts` before anything else. `m` was
     eaten by the mute toggle before this existed.
-11. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
+12. **A touch is not a mouse.** Clicks mode reads the mouse *button*, but a
    touchscreen has no right button — a tap reads which *pad* it hit. That
    rule lives in `resolvePointer()` in `ui/board.ts`; change it there and
    nowhere else.

@@ -87,6 +87,12 @@ export interface ModeDef {
    * has to be the thing that agrees with them.
    */
   readonly ambientRootHz: number
+  /**
+   * Which scale the score is built in, over that root. Follows the symbols the
+   * same way the root does: E-G-B-D and A-E are minor, Pi's C-D-E-G-A is major,
+   * and a score in the wrong one would put a wrong note under every round.
+   */
+  readonly ambientScale: 'minor' | 'major'
   readonly symbols: readonly SymbolDef[]
 }
 
@@ -97,6 +103,7 @@ const ARROWS: ModeDef = {
   tagline: 'Four directions. Patterns turn brutal fast.',
   layout: 'cluster',
   ambientRootHz: 82.41, // E2
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'up',
@@ -147,6 +154,7 @@ const CLICKS: ModeDef = {
   tagline: 'Two buttons. Longer runs, a different kind of hard.',
   layout: 'split',
   ambientRootHz: 110.0, // A2
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'clickLeft',
@@ -206,6 +214,7 @@ const GRID: ModeDef = {
   tagline: 'Nine cells. Short runs, and no room to guess.',
   layout: 'grid',
   ambientRootHz: 82.41, // E2 — the same E the cells are built from
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'gridNW',
@@ -348,6 +357,7 @@ const PI: ModeDef = {
   tagline: 'The digits of \u03c0, in order. Everyone knows the first two.',
   layout: 'keypad',
   ambientRootHz: 65.41, // C2 — under the C pentatonic the digits are tuned to
+  ambientScale: 'major',
   readout: true,
   fixedSequence: PI_DIGITS.map((digit) => PI_SYMBOL_IDS[Number(digit)]),
   symbols: PI_SYMBOL_IDS.map((id, digit) => ({

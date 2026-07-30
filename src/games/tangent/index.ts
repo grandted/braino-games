@@ -41,6 +41,12 @@ function mount(container: HTMLElement, context: GameContext): GameHandle {
 
   /** For the "one and done" label: was the run just saved the session's first? */
   let runsThisSession = 0
+
+  // The score plays across every screen, so unlike the per-run blur handlers
+  // below, this one belongs to the mount: a hidden tab must go quiet whether it
+  // was hidden mid-round or from the menu.
+  const onVisibility = (): void => tones.setPageVisible(!document.hidden)
+  document.addEventListener('visibilitychange', onVisibility)
   let current: Screen | null = null
   let leaveCurrent: (() => void) | null = null
   let lastMode: ModeDef = MODES[0]
@@ -231,6 +237,10 @@ function mount(container: HTMLElement, context: GameContext): GameHandle {
     // We're inside the click or keypress that picked the mode, which is the
     // only moment a browser will let an AudioContext start.
     tones.resume()
+    // The score outlives the run on purpose — it carries through the gameover
+    // screen and the board and back to the menu, and only stops when the game
+    // does. The bed is the layer that belongs to a single run.
+    tones.startMusic(mode)
     tones.startAmbience(mode)
     screen = createGameScreen({
       mode,
@@ -254,12 +264,15 @@ function mount(container: HTMLElement, context: GameContext): GameHandle {
   return {
     destroy() {
       // Whatever screen is up, take its listeners and timers with it, and stop
-      // the ambient bed — the shell is about to reuse this container.
+      // both audio layers — the shell is about to reuse this container, and a
+      // game that keeps playing from the deck is a game that never left.
       leaveCurrent?.()
       current?.destroy()
       leaveCurrent = null
       current = null
+      document.removeEventListener('visibilitychange', onVisibility)
       tones.stopAmbience()
+      tones.stopMusic()
     },
   }
 }
