@@ -30,8 +30,17 @@ import { fail, isCount, type Validation } from '../validate.ts'
 
 /** Beyond any human run; a claim past this is a broken client or a lie. */
 const MAX_ROUNDS = 500
-/** Nobody sees, decides and moves in under this. */
-const MIN_HUMAN_MS = 80
+/**
+ * Nobody averages under this across a whole run — see, decide, move, repeat.
+ *
+ * It is a floor on the *mean* and on nothing else. A single input is the
+ * minimum of a run's worth of samples, and minima are exactly where human
+ * variance lives: a remembered pair played by two fingers, or the second half
+ * of a repeated symbol, lands well under this and is a perfectly real input.
+ * Holding it to the same bar rejected honest runs outright — the better the
+ * player, the more certain the rejection.
+ */
+const MIN_AVERAGE_MS = 80
 /** No per-input timeout in the game, but an hour between inputs is noise. */
 const MAX_REACTION_MS = 3_600_000
 /** Timers only ever run late, never early — this is slack for rounding. */
@@ -79,20 +88,24 @@ export function validateTangent(
   }
 
   const avgReactionMs = raw.avgReactionMs
-  if (
-    !isCount(avgReactionMs) ||
-    avgReactionMs < MIN_HUMAN_MS ||
-    avgReactionMs > MAX_REACTION_MS
-  ) {
-    return fail('avgReactionMs is not plausible')
+  if (!isCount(avgReactionMs)) {
+    return fail('avgReactionMs must be a whole number')
+  }
+  if (avgReactionMs < MIN_AVERAGE_MS) {
+    return fail('that run reacts too fast to be a person')
+  }
+  if (avgReactionMs > MAX_REACTION_MS) {
+    return fail('that run spent too long between inputs')
   }
 
+  // Only the shape is checked here: a fastest input is a minimum, and the run
+  // it came from is already vouched for by its average.
   const fastestInputMs = raw.fastestInputMs
-  if (!isCount(fastestInputMs) || fastestInputMs < MIN_HUMAN_MS) {
-    return fail('fastestInputMs is not plausible')
+  if (!isCount(fastestInputMs)) {
+    return fail('fastestInputMs must be a whole number')
   }
   if (fastestInputMs > avgReactionMs) {
-    return fail('fastestInputMs cannot exceed avgReactionMs')
+    return fail('no input can be slower than the run average')
   }
 
   const runDurationMs = raw.runDurationMs
