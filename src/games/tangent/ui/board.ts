@@ -100,6 +100,12 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
   const timers = new Map<SymbolId, number>()
   /** Separate from `timers`: the ring runs longer than the pressed state. */
   const impacts = new Map<SymbolId, number>()
+  /**
+   * The fail cue lights two pads at once, so it is one timer rather than a
+   * per-pad one. Tracked like the others because the last life is exactly the
+   * case where the screen is torn down before the cue ends.
+   */
+  let missTimer: number | undefined
 
   mode.symbols.forEach((symbol, index) => {
     const pad = createPad(mode, symbol, index)
@@ -210,6 +216,10 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
       for (const id of pads.keys()) lift(id)
       for (const id of impacts.values()) clearTimeout(id)
       impacts.clear()
+      if (missTimer !== undefined) {
+        clearTimeout(missTimer)
+        missTimer = undefined
+      }
       for (const pad of pads.values()) {
         pad.classList.remove(
           'pad--playback',
@@ -228,7 +238,9 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
       const target = pads.get(expected)
       target?.classList.add('pad--miss')
       if (received !== expected) pads.get(received)?.classList.add('pad--miss')
-      window.setTimeout(() => {
+      if (missTimer !== undefined) clearTimeout(missTimer)
+      missTimer = window.setTimeout(() => {
+        missTimer = undefined
         target?.classList.remove('pad--miss')
         pads.get(received)?.classList.remove('pad--miss')
       }, TIMING.failCueMs)
@@ -242,6 +254,7 @@ export function createBoard({ mode, onInput, surface }: BoardOptions): Board {
       timers.clear()
       for (const id of impacts.values()) clearTimeout(id)
       impacts.clear()
+      if (missTimer !== undefined) clearTimeout(missTimer)
       element.remove()
     },
   }
