@@ -182,7 +182,7 @@ which records a version in the database itself so a migration runs once
 and never again.
 
 Server environment variables: `TANGENT_PORT` (8787), `TANGENT_DB`
-(`<root>/data/tangent.db`), `TANGENT_STATIC` (`<root>/dist`), `TANGENT_TRUST_PROXY`
+(`<root>/data/tangent.db`), `TANGENT_STATIC` (`<root>/dist`), `BRAINO_TRUST_PROXY`
 (set to `1` only when something in front actually rewrites
 `x-forwarded-for` — a client can otherwise spoof it and dodge the rate
 limit).

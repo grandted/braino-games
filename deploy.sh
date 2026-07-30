@@ -66,8 +66,23 @@
     printf '\n  Edit %s/.env, then run this again.\n\n' "$APP_DIR"
     printf '  Behind a proxy on another machine, you want:\n'
     printf '    BRAINO_BIND=0.0.0.0\n'
-    printf '    TANGENT_TRUST_PROXY=1\n\n'
+    printf '    BRAINO_TRUST_PROXY=1\n\n'
     exit 0
+  fi
+
+  # The trust-proxy setting was renamed TANGENT_TRUST_PROXY → BRAINO_TRUST_PROXY.
+  # .env is gitignored, so it survives the reset above still carrying the old
+  # name — and compose would then substitute the default, silently dropping
+  # every player into one shared rate-limit bucket. Rewrite the key in place.
+  # Where both names are set the new one wins; the old is just cleared away.
+  if grep -qE '^TANGENT_TRUST_PROXY=' .env; then
+    if grep -qE '^BRAINO_TRUST_PROXY=' .env; then
+      sed -i '/^TANGENT_TRUST_PROXY=/d' .env
+      log "dropped the superseded TANGENT_TRUST_PROXY from .env"
+    else
+      sed -i 's/^TANGENT_TRUST_PROXY=/BRAINO_TRUST_PROXY=/' .env
+      log "renamed TANGENT_TRUST_PROXY to BRAINO_TRUST_PROXY in .env"
+    fi
   fi
 
   # ------------------------------------------------------------- database --
@@ -122,7 +137,7 @@
   printf '\n\033[1;32mdeployed\033[0m — point the proxy host at this machine on port %s (http)\n' \
     "$(sed -n 's/^BRAINO_PORT=//p' .env | tail -1 || echo 8787)"
 
-  if grep -qE '^TANGENT_TRUST_PROXY=1' .env && grep -qE '^BRAINO_BIND=0\.0\.0\.0' .env; then
+  if grep -qE '^BRAINO_TRUST_PROXY=1' .env && grep -qE '^BRAINO_BIND=0\.0\.0\.0' .env; then
     warn "the port is open to the network and x-forwarded-for is trusted.
          Anything that reaches it without passing the proxy can spoof its
          address past the rate limit — firewall the port to the proxy host."
