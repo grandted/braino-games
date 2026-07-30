@@ -87,6 +87,12 @@ export interface ModeDef {
    * has to be the thing that agrees with them.
    */
   readonly ambientRootHz: number
+  /**
+   * Which scale the score is built in, over that root. Follows the symbols the
+   * same way the root does: E-G-B-D and A-E are minor, Pi's C-D-E-G-A is major,
+   * and a score in the wrong one would put a wrong note under every round.
+   */
+  readonly ambientScale: 'minor' | 'major'
   readonly symbols: readonly SymbolDef[]
 }
 
@@ -97,6 +103,7 @@ const ARROWS: ModeDef = {
   tagline: 'Four directions. Patterns turn brutal fast.',
   layout: 'cluster',
   ambientRootHz: 82.41, // E2
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'up',
@@ -147,6 +154,7 @@ const CLICKS: ModeDef = {
   tagline: 'Two buttons. Longer runs, a different kind of hard.',
   layout: 'split',
   ambientRootHz: 110.0, // A2
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'clickLeft',
@@ -179,9 +187,21 @@ const CLICKS: ModeDef = {
  * note and the stereo position, the row picks the octave. Higher on screen is
  * literally higher, and further right is further right.
  *
- *   Q W E        E5 G5 B5      pan  -0.7   0  +0.7
- *   A S D        E4 G4 B4
- *   Z X C        E3 G3 B3
+ *   Q W E        E6 G6 B6      pan  -0.7   0  +0.7
+ *   A S D        E5 G5 B5
+ *   Z X C        E4 G4 B4
+ *
+ * The whole grid sits an octave above where it started, because the bottom row
+ * used to be inaudible rather than merely low. At E3-B3 it was under what a
+ * laptop or phone speaker can radiate — measured 15-18 dB below the top row
+ * once a small driver's roll-off is applied, which plays as no sound at all —
+ * and E3 landed on 164.81 Hz, which is exactly the octave voice of this mode's
+ * own 82.41 Hz ambient bed, so the one cell that needed help most was also the
+ * one being masked. The bottom row now sits on E4, the same pitch arrows mode
+ * has always used for `down`. Boosting the old pitches instead was measured
+ * and rejected: a voice already peaks near full scale, so the gain needed to
+ * make E3 carry clipped, and no amount of gain makes a phone speaker move air
+ * at 165 Hz.
  *
  * QWE/ASD/ZXC is the primary binding because it exists on every keyboard,
  * laptops included. The numpad is a secondary binding and only answers with
@@ -194,13 +214,14 @@ const GRID: ModeDef = {
   tagline: 'Nine cells. Short runs, and no room to guess.',
   layout: 'grid',
   ambientRootHz: 82.41, // E2 — the same E the cells are built from
+  ambientScale: 'minor',
   symbols: [
     {
       id: 'gridNW',
       glyph: 'Q',
       name: 'top left',
       colorVar: '--sym-g-nw',
-      toneHz: 659.25, // E5
+      toneHz: 1318.51, // E6
       pan: -0.7,
       keys: ['q', 'Q', '7'],
       mouseButton: null,
@@ -210,7 +231,7 @@ const GRID: ModeDef = {
       glyph: 'W',
       name: 'top centre',
       colorVar: '--sym-g-n',
-      toneHz: 783.99, // G5
+      toneHz: 1567.98, // G6
       pan: 0,
       keys: ['w', 'W', '8'],
       mouseButton: null,
@@ -220,7 +241,7 @@ const GRID: ModeDef = {
       glyph: 'E',
       name: 'top right',
       colorVar: '--sym-g-ne',
-      toneHz: 987.77, // B5
+      toneHz: 1975.53, // B6
       pan: 0.7,
       keys: ['e', 'E', '9'],
       mouseButton: null,
@@ -230,7 +251,7 @@ const GRID: ModeDef = {
       glyph: 'A',
       name: 'middle left',
       colorVar: '--sym-g-w',
-      toneHz: 329.63, // E4
+      toneHz: 659.25, // E5
       pan: -0.7,
       keys: ['a', 'A', '4'],
       mouseButton: null,
@@ -240,7 +261,7 @@ const GRID: ModeDef = {
       glyph: 'S',
       name: 'centre',
       colorVar: '--sym-g-c',
-      toneHz: 392.0, // G4
+      toneHz: 783.99, // G5
       pan: 0,
       keys: ['s', 'S', '5'],
       mouseButton: null,
@@ -250,7 +271,7 @@ const GRID: ModeDef = {
       glyph: 'D',
       name: 'middle right',
       colorVar: '--sym-g-e',
-      toneHz: 493.88, // B4
+      toneHz: 987.77, // B5
       pan: 0.7,
       keys: ['d', 'D', '6'],
       mouseButton: null,
@@ -260,7 +281,7 @@ const GRID: ModeDef = {
       glyph: 'Z',
       name: 'bottom left',
       colorVar: '--sym-g-sw',
-      toneHz: 164.81, // E3
+      toneHz: 329.63, // E4
       pan: -0.7,
       keys: ['z', 'Z', '1'],
       mouseButton: null,
@@ -270,7 +291,7 @@ const GRID: ModeDef = {
       glyph: 'X',
       name: 'bottom centre',
       colorVar: '--sym-g-s',
-      toneHz: 196.0, // G3
+      toneHz: 392.0, // G4
       pan: 0,
       keys: ['x', 'X', '2'],
       mouseButton: null,
@@ -280,7 +301,7 @@ const GRID: ModeDef = {
       glyph: 'C',
       name: 'bottom right',
       colorVar: '--sym-g-se',
-      toneHz: 246.94, // B3
+      toneHz: 493.88, // B4
       pan: 0.7,
       keys: ['c', 'C', '3'],
       mouseButton: null,
@@ -336,6 +357,7 @@ const PI: ModeDef = {
   tagline: 'The digits of \u03c0, in order. Everyone knows the first two.',
   layout: 'keypad',
   ambientRootHz: 65.41, // C2 — under the C pentatonic the digits are tuned to
+  ambientScale: 'major',
   readout: true,
   fixedSequence: PI_DIGITS.map((digit) => PI_SYMBOL_IDS[Number(digit)]),
   symbols: PI_SYMBOL_IDS.map((id, digit) => ({

@@ -28,7 +28,7 @@ import {
 } from '../../../shared/leaderboard/index.ts'
 import { GAME_ID } from '../meta.ts'
 import { createBoard, type Board } from './board.ts'
-import { isGameKeystroke, isTypingInto } from './keys.ts'
+import { hasShortcutModifier, isGameKeystroke, isTypingInto } from './keys.ts'
 import { createHelix, type Helix } from './helix.ts'
 import type { Tones } from './audio.ts'
 
@@ -459,6 +459,20 @@ export function createGameScreen({
     footer,
   )
 
+  /**
+   * Cue timers, tracked so a screen torn down mid-cue takes them with it —
+   * the same pattern `ui/helix.ts` uses, and for the same reason: dying on
+   * the last life removes this screen while its cues are still running.
+   */
+  const cueTimers = new Set<number>()
+  function afterCue(delayMs: number, run: () => void): void {
+    const id = window.setTimeout(() => {
+      cueTimers.delete(id)
+      run()
+    }, delayMs)
+    cueTimers.add(id)
+  }
+
   function onKeyDown(event: KeyboardEvent): void {
     if (!isGameKeystroke(event)) return
     if (event.key !== 'Escape') return
@@ -525,9 +539,9 @@ export function createGameScreen({
       element.classList.remove('is-celebrating')
       void element.offsetWidth
       element.classList.add('is-celebrating')
-      window.setTimeout(() => {
+      afterCue(TIMING.nextRoundDelayMs, () => {
         element.classList.remove('is-celebrating')
-      }, TIMING.nextRoundDelayMs)
+      })
     },
 
     evolve(value) {
@@ -544,9 +558,9 @@ export function createGameScreen({
       element.classList.remove('is-evolving')
       void element.offsetWidth
       element.classList.add('is-evolving')
-      window.setTimeout(() => {
+      afterCue(TIMING.levelUpCueMs, () => {
         element.classList.remove('is-evolving')
-      }, TIMING.levelUpCueMs)
+      })
     },
 
     setStatus(text, tone) {
@@ -585,6 +599,8 @@ export function createGameScreen({
 
     destroy() {
       window.removeEventListener('keydown', onKeyDown)
+      for (const id of cueTimers) clearTimeout(id)
+      cueTimers.clear()
       mute.destroy()
       helix.destroy()
       board.destroy()
@@ -805,6 +821,13 @@ export function createGameOverScreen({
     // Typing a nickname is not a retry. Checked on the event target first,
     // which is correct even if focus is moving.
     if (isTypingInto(event.target)) return
+    // Nor is a browser shortcut. "Any key plays again" is the loosest handler
+    // in the game, so it is the one that most needs this: without it Ctrl+R
+    // was swallowed and started a new run instead of reloading the page, and
+    // Cmd+R, Ctrl+F and Ctrl+S went the same way.
+    if (hasShortcutModifier(event)) return
+    // A lone modifier press is not a key either — that is a different test
+    // from the one above, which is about what a modifier is *held with*.
     if (event.key === 'Tab' || MODIFIER_KEYS.has(event.key)) return
     // 'm' belongs to the mute toggle on every screen, this one included.
     if (event.key === 'm' || event.key === 'M') return

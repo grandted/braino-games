@@ -238,12 +238,12 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 /**
  * Rate-limit key. Behind a proxy the socket address is the proxy's, so the
- * first x-forwarded-for hop is used when present — set TANGENT_TRUST_PROXY
+ * first x-forwarded-for hop is used when present — set BRAINO_TRUST_PROXY
  * only when something in front is actually rewriting it, since a client can
  * otherwise spoof the header freely.
  */
 function clientKey(req: IncomingMessage): string {
-  if (process.env.TANGENT_TRUST_PROXY === '1') {
+  if (process.env.BRAINO_TRUST_PROXY === '1') {
     const forwarded = req.headers['x-forwarded-for']
     const first = Array.isArray(forwarded) ? forwarded[0] : forwarded
     const hop = first?.split(',')[0]?.trim()

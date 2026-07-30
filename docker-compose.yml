@@ -16,7 +16,7 @@ services:
     environment:
       # Set to "1" only when something in front actually rewrites
       # x-forwarded-for — otherwise a client can spoof it past the rate limit.
-      TANGENT_TRUST_PROXY: "${TANGENT_TRUST_PROXY:-0}"
+      BRAINO_TRUST_PROXY: "${BRAINO_TRUST_PROXY:-0}"
     logging:
       driver: json-file
       options:

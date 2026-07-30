@@ -62,10 +62,11 @@ The board is bind-mounted from `./data`, which is where it already lives,
 so an existing database is picked up as-is and a rebuild leaves it alone.
 Back that directory up; nothing else in the container is worth keeping.
 
-Behind a reverse proxy, set `TANGENT_TRUST_PROXY: "1"` in
-`docker-compose.yml` — but only if the proxy actually rewrites
-`x-forwarded-for`, because otherwise a client can spoof the header and
-walk past the rate limit.
+Behind a reverse proxy, set `BRAINO_TRUST_PROXY=1` in `.env` — but only if
+the proxy actually rewrites `x-forwarded-for`, because otherwise a client
+can spoof the header and walk past the rate limit. Left at `0` with a proxy
+in front, every player arrives as the proxy's address and shares one
+rate-limit bucket.
 
 ---
 

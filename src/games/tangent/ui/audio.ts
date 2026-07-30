@@ -9,11 +9,12 @@
  *
  *   voice → panner ─┬─────────────── dry ──┐
  *                   └─ send → convolver ───┤→ master → compressor → out
- *   ambient bed ────────────────── duck ───┘
+ *   ambient bed ────────────────── duck ───┤
+ *   score → lowpass → bus ───────── duck ───┘
  *
  * The reverb impulse is synthesised at startup (decaying stereo noise), the
- * compressor keeps a dense round from clipping, and the bed ducks under
- * playback so the pattern always sits on top of the mix.
+ * compressor keeps a dense round from clipping, and both the bed and the score
+ * duck under playback so the pattern always sits on top of the mix.
  *
  * Browsers won't let an AudioContext start outside a user gesture, so the
  * context is created lazily on the first `resume()` — which the app calls
@@ -50,6 +51,108 @@ const BED = {
   maxCutoffHz: 1400,
   glideS: 1.4,
 } as const
+
+/**
+ * The score — the thing that keeps a screen from being silent.
+ *
+ * Three rules shape all of it, and they are the reason it is this slow and this
+ * quiet rather than a tune:
+ *
+ * 1. **It must not compete for the pattern's channel.** A symbol tone is a
+ *    pluck: six milliseconds of attack and a filter slamming shut. Every note
+ *    here swells over a third of a second and never has a transient, so even
+ *    where it lands on a symbol's exact pitch — unavoidable in grid mode, whose
+ *    nine cells span three octaves of the key the bed is rooted in — it cannot
+ *    be mistaken for a flash. It also sits far below the tones, and drops to
+ *    near nothing while the sequence plays.
+ * 2. **It must not be something to keep time by.** ~52 BPM with at most one
+ *    melodic note a beat and more rests than notes: too slow and too sparse to
+ *    entrain to, so it never becomes a metronome the player is fighting.
+ * 3. **It must not repeat quickly enough to be learned.** Four chords against a
+ *    five-bar melodic phrase come back around every twenty bars — about a
+ *    minute and a half — which is longer than most runs last.
+ *
+ * The chords move over the bed's root pedal rather than away from it: every
+ * degree here contains or tolerates the root, so the pedal never turns into a
+ * wrong note.
+ */
+const MUSIC = {
+  /** ~52 BPM. */
+  beatS: 1.15,
+  beatsPerBar: 4,
+  /** Bars kept ahead of the audio clock. */
+  lookaheadBars: 2,
+  /** Bus level with no run in play: the menu, the board, the gameover screen. */
+  idleGain: 0.9,
+  /** Under a run — present, and clearly behind the game. */
+  playingGain: 0.5,
+  /** Under playback. See invariant 1: the pattern owns this moment. */
+  duckedGain: 0.15,
+  /** Time constants for the two gain moves. Ducking has to be quick. */
+  glideS: 0.8,
+  duckGlideS: 0.22,
+  /** Opens slowly as the run climbs, the same way the bed brightens. */
+  baseCutoffHz: 1100,
+  cutoffPerLevelHz: 240,
+  maxCutoffHz: 4600,
+  cutoffGlideS: 2.4,
+  /** Chord voices, in semitones above the chord root, with their levels. */
+  /**
+   * Chord voices, in semitones above the chord root, with their levels.
+   *
+   * Two of the three are below where any symbol sits. The third is the one that
+   * carries on a phone speaker — a small driver radiates almost nothing at the
+   * 165 Hz the bottom voice sings, the same physics that moved grid's bottom row
+   * up an octave — so it is also the quietest, because it is the one sharing a
+   * register with the pattern.
+   */
+  padVoices: [
+    { semitones: 12, level: 0.095, pan: -0.3 },
+    { semitones: 19, level: 0.07, pan: 0.3 },
+    { semitones: 24, level: 0.04, pan: 0 },
+  ],
+  padAttackS: 1.15,
+  padReleaseS: 1.7,
+  /** Held past the bar so chords cross-fade instead of stepping. */
+  padHoldBars: 1.3,
+  /** The melodic voice, three octaves over the root. */
+  leadSemitones: 36,
+  leadLevel: 0.075,
+  leadAttackS: 0.34,
+  /** All release and no plateau: a note that rings and goes. */
+  leadHoldS: 1.6,
+  leadReleaseS: 1.26,
+} as const
+
+/**
+ * Chord roots, in semitones above the mode's root, one per bar.
+ *
+ * Minor is i–♭III–♭VII–v, major is I–vi–V–iii. Both are cycles rather than
+ * cadences: nothing here resolves, because a resolution is an event and events
+ * belong to the game.
+ */
+const PROGRESSION = {
+  minor: [0, 3, 10, 7],
+  major: [0, 9, 7, 4],
+} as const
+
+/** Melodic degrees, in semitones above the *chord* root — always consonant. */
+const LEAD_STEPS = {
+  minor: [0, 3, 7, 12],
+  major: [0, 4, 7, 12],
+} as const
+
+/**
+ * Which degree sounds on which beat, one row per bar. `null` is a rest, and the
+ * rests are the point — see rule 2 above.
+ */
+const LEAD_PHRASE: readonly (readonly (number | null)[])[] = [
+  [0, null, 2, null],
+  [null, 2, null, 3],
+  [1, null, 0, null],
+  [null, 3, null, 2],
+  [2, null, 1, null],
+]
 
 const CUES = {
   clearNotes: [659.25, 987.77], // E5, B5
@@ -91,11 +194,24 @@ export interface Tones {
   gameOver(): void
   /** Start the harmonic bed under a run. */
   startAmbience(mode: ModeDef): void
-  /** Brighten the bed as the run climbs. */
+  /** Brighten the bed and the score as the run climbs. */
   setAmbienceLevel(level: number): void
-  /** Pull the bed down under playback so the pattern stays on top. */
+  /** Pull the bed and the score down under playback so the pattern stays on top. */
   duck(ducked: boolean): void
   stopAmbience(): void
+  /**
+   * Start the score, in this mode's key. Must be called inside a user gesture,
+   * same as `resume()`. Calling it again with another mode retunes rather than
+   * layering, and it keeps playing between runs — silence is the thing it is
+   * here to remove.
+   */
+  startMusic(mode: ModeDef): void
+  /**
+   * The page was hidden or came back. The score is the one layer that outlives
+   * a run, so it is the one that would otherwise play to an empty room.
+   */
+  setPageVisible(visible: boolean): void
+  stopMusic(): void
   destroy(): void
 }
 
@@ -117,6 +233,28 @@ export function createTones(): Tones {
     gain: GainNode
     filter: BiquadFilterNode
   } | null = null
+
+  /** The score, alive from the first mode pick until the game is left. */
+  let music: {
+    bus: GainNode
+    filter: BiquadFilterNode
+    root: number
+    scale: 'minor' | 'major'
+    /** Bars scheduled so far — the phrase and the progression both index off it. */
+    bar: number
+    /** Audio-clock time of the next bar to schedule. */
+    nextBarAt: number
+    timer: number
+    /** Notes already on the clock, so a retune can take them back. */
+    pending: OscillatorNode[]
+  } | null = null
+
+  /** Playback is running, so both layers are held down. */
+  let ducked = false
+  /** A hidden tab hears nothing, and does not build notes for nobody. */
+  let pageVisible = true
+  /** Last level the run reached, for the two lowpasses that follow it. */
+  let runLevel = 1
 
   function ensureContext(): AudioContext | null {
     if (context) return context
@@ -274,6 +412,155 @@ export function createTones(): Tones {
     }
   }
 
+  /**
+   * One note of the score: a swell, not a pluck.
+   *
+   * Deliberately not `voice()`. That one exists to be the memory anchor and its
+   * envelope is what makes it one; this one exists to be *behind* the anchor,
+   * and its envelope is what keeps the two apart. Sharing a function would put
+   * both of those in one set of options and invite a change to one from
+   * quietly reaching the other.
+   */
+  function musicNote(
+    hz: number,
+    startAt: number,
+    holdS: number,
+    options: { level: number; attackS: number; releaseS: number; pan: number },
+  ): void {
+    const ctx = context
+    const current = music
+    if (!ctx || !current || ctx.state === 'closed') return
+
+    const endAt = startAt + holdS
+    const { level, attackS, releaseS, pan } = options
+
+    const panner = ctx.createStereoPanner()
+    panner.pan.setValueAtTime(pan, startAt)
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0.0001, startAt)
+    gain.gain.linearRampToValueAtTime(level, startAt + attackS)
+    // A chord has to hold to be a chord: swelling straight into a decay left
+    // the layer 20 dB under itself and the silence still audible underneath.
+    // Give the lead a release as long as its hold and it gets the old shape.
+    gain.gain.setValueAtTime(
+      level,
+      Math.max(endAt - releaseS, startAt + attackS),
+    )
+    gain.gain.exponentialRampToValueAtTime(0.0001, endAt)
+
+    // A soft triangle two ways: sine alone is too thin to survive a phone
+    // speaker, and anything brighter starts sounding like a symbol.
+    const osc = ctx.createOscillator()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(hz, startAt)
+    osc.connect(gain)
+    osc.start(startAt)
+    osc.stop(endAt + 0.05)
+
+    gain.connect(panner)
+    panner.connect(current.filter)
+
+    current.pending.push(osc)
+    osc.onended = () => {
+      osc.disconnect()
+      gain.disconnect()
+      panner.disconnect()
+      const pending = music?.pending
+      if (!pending) return
+      const at = pending.indexOf(osc)
+      if (at >= 0) pending.splice(at, 1)
+    }
+  }
+
+  /** Chord, then melody, for one bar of the phrase. */
+  function scheduleBar(bar: number, startAt: number): void {
+    const current = music
+    if (!current) return
+
+    const progression = PROGRESSION[current.scale]
+    const steps = LEAD_STEPS[current.scale]
+    const chordRoot = progression[bar % progression.length]
+    const barS = MUSIC.beatS * MUSIC.beatsPerBar
+    const hz = (semitones: number): number =>
+      current.root * 2 ** ((chordRoot + semitones) / 12)
+
+    for (const pad of MUSIC.padVoices) {
+      musicNote(hz(pad.semitones), startAt, barS * MUSIC.padHoldBars, {
+        level: pad.level,
+        attackS: MUSIC.padAttackS,
+        releaseS: MUSIC.padReleaseS,
+        pan: pad.pan,
+      })
+    }
+
+    const phrase = LEAD_PHRASE[bar % LEAD_PHRASE.length]
+    phrase.forEach((step, beat) => {
+      if (step === null) return
+      musicNote(
+        hz(MUSIC.leadSemitones + steps[step]),
+        startAt + beat * MUSIC.beatS,
+        MUSIC.leadHoldS,
+        {
+          level: MUSIC.leadLevel,
+          attackS: MUSIC.leadAttackS,
+          releaseS: MUSIC.leadReleaseS,
+          // Alternating, so the melody is never where a symbol tone is.
+          pan: beat % 2 === 0 ? -0.45 : 0.45,
+        },
+      )
+    })
+  }
+
+  /**
+   * Top the clock up to the lookahead. One timer, twice a bar, building a few
+   * nodes — every audible boundary is on the audio thread, so a late tick
+   * cannot move a note and nothing here runs per frame. See invariant 8.
+   */
+  function pumpMusic(): void {
+    const ctx = context
+    const current = music
+    if (!ctx || !current || muted || !pageVisible) return
+
+    const barS = MUSIC.beatS * MUSIC.beatsPerBar
+    // A backgrounded tab throttles timers, and the clock runs on without us.
+    // Skip the bars nobody was there to hear rather than rendering them late.
+    if (current.nextBarAt < ctx.currentTime) {
+      current.nextBarAt = ctx.currentTime + 0.05
+    }
+    const horizon = ctx.currentTime + barS * MUSIC.lookaheadBars
+    while (current.nextBarAt < horizon) {
+      scheduleBar(current.bar, current.nextBarAt)
+      current.bar += 1
+      current.nextBarAt += barS
+    }
+  }
+
+  /**
+   * The score's level, which is entirely a function of what the game is doing:
+   * loud on a quiet screen, back under a run, gone under playback.
+   */
+  function applyMusicGain(timeConstant: number = MUSIC.glideS): void {
+    const ctx = context
+    const current = music
+    if (!ctx || !current) return
+    const target = muted || !pageVisible
+      ? 0
+      : !bed
+        ? MUSIC.idleGain
+        : ducked
+          ? MUSIC.duckedGain
+          : MUSIC.playingGain
+    current.bus.gain.setTargetAtTime(target, ctx.currentTime, timeConstant)
+  }
+
+  function musicCutoffHz(level: number): number {
+    return Math.min(
+      MUSIC.baseCutoffHz + level * MUSIC.cutoffPerLevelHz,
+      MUSIC.maxCutoffHz,
+    )
+  }
+
   return {
     get muted() {
       return muted
@@ -282,15 +569,23 @@ export function createTones(): Tones {
     toggleMute() {
       muted = !muted
       writeMuted(muted)
-      if (bed) {
-        const ctx = context
-        if (ctx) {
-          bed.gain.gain.cancelScheduledValues(ctx.currentTime)
-          bed.gain.gain.setTargetAtTime(
-            muted ? 0 : BED.gain,
-            ctx.currentTime,
-            0.05,
-          )
+      const ctx = context
+      if (bed && ctx) {
+        bed.gain.gain.cancelScheduledValues(ctx.currentTime)
+        bed.gain.gain.setTargetAtTime(
+          muted ? 0 : BED.gain,
+          ctx.currentTime,
+          0.05,
+        )
+      }
+      if (music && ctx) {
+        music.bus.gain.cancelScheduledValues(ctx.currentTime)
+        applyMusicGain(0.05)
+        // The scheduler stops building notes while muted, so unmuting has to
+        // fill the lookahead again rather than wait out half a bar of silence.
+        if (!muted) {
+          music.nextBarAt = ctx.currentTime + 0.05
+          pumpMusic()
         }
       }
       return muted
@@ -369,6 +664,17 @@ export function createTones(): Tones {
       const ctx = ensureContext()
       if (!ctx || bed) return
 
+      // A new run starts at the bottom of the ladder, so both lowpasses go back
+      // to where they were before the last one climbed.
+      runLevel = 1
+      if (music) {
+        music.filter.frequency.setTargetAtTime(
+          musicCutoffHz(runLevel),
+          ctx.currentTime,
+          MUSIC.cutoffGlideS,
+        )
+      }
+
       const filter = ctx.createBiquadFilter()
       filter.type = 'lowpass'
       filter.frequency.value = BED.baseCutoffHz
@@ -393,33 +699,53 @@ export function createTones(): Tones {
       filter.connect(gain)
       send(gain)
       bed = { voices, gain, filter }
+      // A run is starting: the score steps back to make room for it.
+      applyMusicGain()
     },
 
     setAmbienceLevel(level) {
       const ctx = context
-      if (!bed || !ctx) return
-      const cutoff = Math.min(
-        BED.baseCutoffHz + level * BED.cutoffPerLevelHz,
-        BED.maxCutoffHz,
-      )
-      bed.filter.frequency.setTargetAtTime(cutoff, ctx.currentTime, BED.glideS)
+      runLevel = level
+      if (!ctx) return
+      if (bed) {
+        const cutoff = Math.min(
+          BED.baseCutoffHz + level * BED.cutoffPerLevelHz,
+          BED.maxCutoffHz,
+        )
+        bed.filter.frequency.setTargetAtTime(cutoff, ctx.currentTime, BED.glideS)
+      }
+      if (music) {
+        music.filter.frequency.setTargetAtTime(
+          musicCutoffHz(level),
+          ctx.currentTime,
+          MUSIC.cutoffGlideS,
+        )
+      }
     },
 
-    duck(ducked) {
+    duck(isDucked) {
       const ctx = context
-      if (!bed || !ctx) return
-      bed.gain.gain.setTargetAtTime(
-        muted ? 0 : ducked ? BED.duckedGain : BED.gain,
-        ctx.currentTime,
-        0.18,
-      )
+      ducked = isDucked
+      if (!ctx) return
+      if (bed) {
+        bed.gain.gain.setTargetAtTime(
+          muted ? 0 : isDucked ? BED.duckedGain : BED.gain,
+          ctx.currentTime,
+          0.18,
+        )
+      }
+      applyMusicGain(MUSIC.duckGlideS)
     },
 
     stopAmbience() {
       const ctx = context
       const current = bed
+      ducked = false
       if (!current || !ctx) return
       bed = null
+      // With the bed gone the run is over, and the score comes back up to fill
+      // the gameover screen.
+      applyMusicGain()
 
       current.gain.gain.cancelScheduledValues(ctx.currentTime)
       current.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.25)
@@ -432,14 +758,110 @@ export function createTones(): Tones {
       }
     },
 
+    startMusic(mode) {
+      const ctx = ensureContext()
+      if (!ctx) return
+
+      if (music) {
+        // Same key, nothing to do — this is the ordinary case of a retry.
+        if (
+          music.root === mode.ambientRootHz &&
+          music.scale === mode.ambientScale
+        ) {
+          return
+        }
+        // A different mode. Take back the bars already on the clock: a chord in
+        // the old key would otherwise still be ringing under the new mode's
+        // first sequence, which is exactly the wrong moment for a wrong note.
+        music.bus.gain.cancelScheduledValues(ctx.currentTime)
+        music.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.04)
+        for (const osc of music.pending) osc.stop(ctx.currentTime + 0.2)
+        music.pending = []
+        music.root = mode.ambientRootHz
+        music.scale = mode.ambientScale
+        music.bar = 0
+        music.nextBarAt = ctx.currentTime + 0.3
+        applyMusicGain()
+        pumpMusic()
+        return
+      }
+
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'
+      filter.frequency.value = musicCutoffHz(runLevel)
+      filter.Q.value = 0.6
+
+      const bus = ctx.createGain()
+      bus.gain.value = 0
+      filter.connect(bus)
+      send(bus)
+
+      music = {
+        bus,
+        filter,
+        root: mode.ambientRootHz,
+        scale: mode.ambientScale,
+        bar: 0,
+        nextBarAt: ctx.currentTime + 0.25,
+        timer: window.setInterval(
+          pumpMusic,
+          // Twice a bar: often enough that one throttled tick cannot leave a
+          // hole, rare enough to be invisible next to the playback timers.
+          (MUSIC.beatS * MUSIC.beatsPerBar * 1000) / 2,
+        ),
+        pending: [],
+      }
+      applyMusicGain()
+      pumpMusic()
+    },
+
+    setPageVisible(visible) {
+      if (visible === pageVisible) return
+      pageVisible = visible
+      const ctx = context
+      if (!music || !ctx) return
+      // Fast out, gentle back in — and the notes that were on the clock when
+      // the tab went away are long gone, so coming back starts a fresh bar.
+      applyMusicGain(visible ? MUSIC.glideS : 0.12)
+      if (visible) {
+        music.nextBarAt = ctx.currentTime + 0.05
+        pumpMusic()
+      }
+    },
+
+    stopMusic() {
+      const ctx = context
+      const current = music
+      if (!current) return
+      music = null
+      window.clearInterval(current.timer)
+      if (!ctx || ctx.state === 'closed') return
+
+      current.bus.gain.cancelScheduledValues(ctx.currentTime)
+      current.bus.gain.setTargetAtTime(0, ctx.currentTime, 0.2)
+      // Long enough to be a fade rather than a cut, short enough that leaving
+      // the game is still leaving it.
+      const stopAt = ctx.currentTime + 1.1
+      for (const osc of current.pending) osc.stop(stopAt)
+      current.pending = []
+      // The graph stays up until the fade is over — notes still on the clock are
+      // running through it, and pulling the filter out now would be a click.
+      window.setTimeout(() => {
+        current.filter.disconnect()
+        current.bus.disconnect()
+      }, 1400)
+    },
+
     destroy() {
       const ctx = context
+      if (music) window.clearInterval(music.timer)
       context = null
       master = null
       dry = null
       wet = null
       reverb = null
       bed = null
+      music = null
       void ctx?.close()
     },
   }
