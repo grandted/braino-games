@@ -140,7 +140,12 @@ function mount(container: HTMLElement, context: GameContext): GameHandle {
           break
         }
         case 'phase':
-          screen.board.setLocked(event.phase === 'playback')
+          // Paused counts as locked: input is swallowed until the replay
+          // starts, and a pad that looks live while it is being ignored is a
+          // lie the player pays for. See invariant 1.
+          screen.board.setLocked(
+            event.phase === 'playback' || event.phase === 'paused',
+          )
           // The strand hangs still while the sequence plays, and spins up when
           // it is the player's turn — the locked state, made visible.
           screen.helix.setLive(event.phase === 'input')

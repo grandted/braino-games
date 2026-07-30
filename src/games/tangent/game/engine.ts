@@ -152,6 +152,21 @@ export class Engine {
   #livesMax = RULES.lives
   #mistakes = 0
   #freeLives = 0
+  /**
+   * The next round, scheduled but not started yet.
+   *
+   * Losing focus has to hold this as surely as it holds a playback in
+   * progress. The runway between rounds is only a beat — `nextRoundDelayMs`
+   * after a clear, `failCueMs` after a miss — but a sequence that flashes at a
+   * window nobody is looking at is a round the player never saw and cannot
+   * answer, and the old code let exactly that through.
+   *
+   * It holds the work itself rather than a flag, and that is the point: the
+   * wait before the *gameover* lives in the same `result` phase, and pausing
+   * it would strand a finished run forever. That wait simply never sets this,
+   * so it can never be resumed by mistake.
+   */
+  #pendingRound: (() => void) | null = null
 
   constructor(options: EngineOptions) {
     this.#mode = options.mode
@@ -214,6 +229,7 @@ export class Engine {
   /** Begin a fresh run at round 1. Safe to call from any phase. */
   start(): void {
     this.#cancelTimers()
+    this.#pendingRound = null
     this.#sequence = startSequence(this.#mode, this.#random)
     this.#reactions = []
     this.#clearedRounds = 0
@@ -260,24 +276,38 @@ export class Engine {
 
   /**
    * Focus left the window. Losing the middle of a playback would be unfair,
-   * so playback is cancelled and replayed on return rather than failed.
-   * Input and result phases carry on untouched — thinking time is free.
+   * so playback is cancelled and replayed on return rather than failed — and
+   * so is a round that was queued but has not flashed yet, which is just as
+   * unseeable.
+   *
+   * Input is untouched: thinking time is free, and a player who tabs away
+   * mid-answer finds the round exactly where they left it. So is the wait
+   * before the gameover screen, which has no round behind it to resume.
    */
   handleBlur(): void {
-    if (this.#phase !== 'playback') return
+    if (this.#phase !== 'playback' && this.#pendingRound === null) return
+    // Deliberately does not clear #pendingRound: holding it is what tells
+    // handleFocus which round to come back to.
     this.#cancelTimers()
     this.#setPhase('paused')
   }
 
-  /** Focus came back: replay the current round from the top. */
+  /** Focus came back: pick the round back up, from the top of its playback. */
   handleFocus(): void {
     if (this.#phase !== 'paused') return
-    this.#beginRound()
+    const pending = this.#pendingRound
+    this.#pendingRound = null
+    // Either the round that was still queued when focus went, or the one that
+    // was mid-flash. Both start over from the first symbol.
+    if (pending) pending()
+    else this.#beginRound()
   }
 
   /** Abandon the run and drop every pending timer. */
   stop(): void {
     this.#cancelTimers()
+    // A round held by a pause must not survive the run it belonged to.
+    this.#pendingRound = null
     this.#setPhase('idle')
   }
 
@@ -367,7 +397,7 @@ export class Engine {
       })
     }
 
-    this.#after(TIMING.nextRoundDelayMs, () => {
+    this.#queueRound(TIMING.nextRoundDelayMs, () => {
       this.#sequence = extendSequence(this.#sequence, this.#mode, this.#random)
       this.#beginRound()
     })
@@ -394,10 +424,12 @@ export class Engine {
     })
 
     if (this.#livesLeft > 0) {
-      this.#after(TIMING.failCueMs, () => this.#beginRound())
+      this.#queueRound(TIMING.failCueMs, () => this.#beginRound())
       return
     }
 
+    // Not queued as a round: the run is over, and a blur must let this land
+    // rather than hold it. See #pendingRound.
     const stats = this.#buildStats()
     this.#after(TIMING.failCueMs, () => {
       this.#setPhase('gameover')
@@ -442,6 +474,18 @@ export class Engine {
 
   #after(delayMs: number, run: () => void): void {
     this.#timers.push(setTimeout(run, delayMs))
+  }
+
+  /**
+   * Schedule the next round, and record it as resumable while it waits. Only
+   * the two paths that really do lead to another playback use this.
+   */
+  #queueRound(delayMs: number, begin: () => void): void {
+    this.#pendingRound = begin
+    this.#after(delayMs, () => {
+      this.#pendingRound = null
+      begin()
+    })
   }
 
   /** Stale timeouts would flash symbols into the next round. */
